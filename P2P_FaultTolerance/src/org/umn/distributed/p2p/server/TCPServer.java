@@ -1,4 +1,4 @@
-package org.umn.distributed.server;
+package org.umn.distributed.p2p.server;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
