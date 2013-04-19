@@ -1,4 +1,4 @@
-package org.umn.distributed.p2p.server;
+package org.umn.distributed.p2p.common;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -10,7 +10,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
-import org.umn.distributed.p2p.common.Utils;
 
 
 public class TCPServer implements Runnable {
