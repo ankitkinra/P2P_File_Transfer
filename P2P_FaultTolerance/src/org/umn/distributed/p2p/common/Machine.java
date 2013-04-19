@@ -1,5 +1,6 @@
 package org.umn.distributed.p2p.common;
 
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -11,36 +12,22 @@ public class Machine {
 	public static final String FORMAT_START = "[";
 	public static final String FORMAT_END = "]";
 
-	private int id;
 	private String IP;
 	private int port;
 	private int extPort;
 
-	public Machine(int id, String iP, int port, int extPort) {
-		this.id = id;
+	public Machine(String iP, int port, int extPort) {
 		this.IP = iP;
 		this.port = port;
 		this.extPort = extPort;
 	}
 
 	public Machine(String iP, int port) {
-		this(0, iP, port, 0);
+		this(iP, port, 0);
 	}
 
-	public Machine(String iP, int port, int extPort) {
-		this(0, iP, port, extPort);
-	}
-
-	public Machine(int id, String iP, int port) {
-		this(id, iP, port, 0);
-	}
-
-	public int getId() {
-		return id;
-	}
-
-	public void setid(int id) {
-		this.id = id;
+	public Machine(String iP, String port) {
+		this(iP, Integer.parseInt(port), 0);
 	}
 
 	public String getIP() {
@@ -68,7 +55,6 @@ public class Machine {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((IP == null) ? 0 : IP.hashCode());
-		result = prime * result + id;
 		result = prime * result + port;
 		return result;
 	}
@@ -87,8 +73,6 @@ public class Machine {
 				return false;
 		} else if (!IP.equals(other.IP))
 			return false;
-		if (id != other.id)
-			return false;
 		if (port != other.port)
 			return false;
 		return true;
@@ -97,9 +81,8 @@ public class Machine {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append(FORMAT_START).append(id).append("|").append(IP)
-				.append("|").append(port).append("|").append(extPort)
-				.append(FORMAT_END);
+		builder.append(FORMAT_START).append(IP).append(SharedConstants.COMMAND_LIST_SEPARATOR).append(port)
+				.append(SharedConstants.COMMAND_LIST_SEPARATOR).append(extPort).append(FORMAT_END);
 		return builder.toString();
 	}
 
@@ -111,19 +94,18 @@ public class Machine {
 					+ machineStr);
 		}
 		machineStr = machineStr.substring(1, machineStr.length() - 1);
-		String machineParams[] = machineStr.split("\\|");
-		if (machineParams.length != 4) {
+		String machineParams[] = machineStr.split(SharedConstants.COMMAND_LIST_SEPARATOR);
+		if (machineParams.length != 3) {
 			throw new IllegalArgumentException(
 					"Invalid machine parameter number");
 		}
-		int id = 0;
+		
 		int internalPort = 0;
 		int externalPort = 0;
 		try {
-			id = Integer.parseInt(machineParams[0]);
-			internalPort = Integer.parseInt(machineParams[2]);
-			externalPort = Integer.parseInt(machineParams[3]);
-			return new Machine(id, machineParams[1], internalPort, externalPort);
+			internalPort = Integer.parseInt(machineParams[1]);
+			externalPort = Integer.parseInt(machineParams[2]);
+			return new Machine(machineParams[0], internalPort, externalPort);
 		} catch (NumberFormatException nfe) {
 			throw new IllegalArgumentException("Invalid article id/parentId");
 		}
@@ -141,4 +123,14 @@ public class Machine {
 		}
 		return listMachines;
 	}
+	
+	public static String convertCollectionToString(Collection<Machine> machineCollection) {
+		StringBuilder sb = new StringBuilder();
+		
+		for (Machine m:machineCollection) {
+			sb.append(m.toString());
+		}
+		return sb.toString();
+	}
+
 }

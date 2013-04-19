@@ -9,7 +9,7 @@ public class Props {
 
 	private static final String DEFAULT_MAX_PSEUDO_NW_DELAY = "1000";
 
-	public static String ENCODING;
+	public static String ENCODING = SharedConstants.DEFAULT_ENCODING;
 
 	public static int WRITER_SERVER_THREADS;
 	public static int READER_SERVER_THREADS;
@@ -35,8 +35,9 @@ public class Props {
 	public static int percentIncreaseWriteQuorum = 0;
 
 	public static int maxPseudoNetworkDelay;
-	public static String logFilePath;
+	public static String logFilePath = "log4j.properties";
 
+	
 	public static void loadProperties(String propertyFile) {
 		Properties prop = new Properties();
 		try {

@@ -15,7 +15,7 @@ public class Utils {
 	private static Logger logger = Logger.getLogger(Utils.class);
 
 	private static String myIP = null;
-	
+
 	public static boolean isEmpty(String str) {
 		return str == null || str.trim().length() == 0;
 	}
@@ -140,5 +140,22 @@ public class Utils {
 		}
 		return byteToString(data, encoding);
 	}
+
+	public static String[] getKeyAndValuefromFragment(String commandFragment) {
+		return getStringSplitToArr(commandFragment,
+				SharedConstants.COMMAND_VALUE_SEPARATOR);
+	}
+	
+	public static String[] splitCommandIntoFragments(String command) {
+		return getStringSplitToArr(command,
+				"\\"+SharedConstants.COMMAND_PARAM_SEPARATOR);
+	}
+
+	public static String[] getStringSplitToArr(String commandFragment,
+			String keyValueSeparator) {
+		return commandFragment.split(keyValueSeparator);
+	}
+
+	
 
 }
