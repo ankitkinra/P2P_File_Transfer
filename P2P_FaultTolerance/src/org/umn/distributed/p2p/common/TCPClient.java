@@ -19,7 +19,7 @@ public class TCPClient {
 					+ remoteMachine);
 		}
 		// Adding a random delay
-		int maxDelay = Props.maxPseudoNetworkDelay;
+		int maxDelay = ServerProps.maxPseudoNetworkDelay;
 		if (maxDelay < 1) {
 			maxDelay = ClientProps.maxPseudoNetworkDelay;
 		}

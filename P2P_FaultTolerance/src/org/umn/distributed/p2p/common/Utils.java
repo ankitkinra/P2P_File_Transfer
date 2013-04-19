@@ -113,8 +113,8 @@ public class Utils {
 	}
 
 	public static byte[] stringToByte(String str) {
-		String encoding = Props.ENCODING;
-		if (Props.ENCODING == null) {
+		String encoding = ServerProps.ENCODING;
+		if (ServerProps.ENCODING == null) {
 			encoding = ClientProps.ENCODING;
 		}
 		return stringToByte(str, encoding);
@@ -134,8 +134,8 @@ public class Utils {
 	}
 
 	public static String byteToString(byte[] data) {
-		String encoding = Props.ENCODING;
-		if (Props.ENCODING == null) {
+		String encoding = ServerProps.ENCODING;
+		if (ServerProps.ENCODING == null) {
 			encoding = ClientProps.ENCODING;
 		}
 		return byteToString(data, encoding);
@@ -145,17 +145,33 @@ public class Utils {
 		return getStringSplitToArr(commandFragment,
 				SharedConstants.COMMAND_VALUE_SEPARATOR);
 	}
-	
+
+	public static String[] getKeyAndValuefromFragment(String commandFragment,
+			int limit) {
+		return getStringSplitToArr(commandFragment,
+				SharedConstants.COMMAND_VALUE_SEPARATOR, limit);
+	}
+
 	public static String[] splitCommandIntoFragments(String command) {
 		return getStringSplitToArr(command,
-				"\\"+SharedConstants.COMMAND_PARAM_SEPARATOR);
+				SharedConstants.COMMAND_PARAM_SEPARATOR_REGEX, 0);
+	}
+
+	public static String[] splitCommandIntoFragments(String command, int limit) {
+		return getStringSplitToArr(command,
+				SharedConstants.COMMAND_PARAM_SEPARATOR_REGEX, limit);
 	}
 
 	public static String[] getStringSplitToArr(String commandFragment,
 			String keyValueSeparator) {
-		return commandFragment.split(keyValueSeparator);
+
+		return commandFragment.split(keyValueSeparator, 0);
+
 	}
 
-	
+	public static String[] getStringSplitToArr(String commandFragment,
+			String keyValueSeparator, int limit) {
+		return commandFragment.split(keyValueSeparator, limit);
 
+	}
 }

@@ -15,11 +15,12 @@ public class LoggingUtils {
 	public static final Level DEFAULT_LOG_LEVEL = Level.INFO;
 	private static Logger logger;
 	static {
-		String LOG_FILE = Props.logFilePath;
-		if (Props.logFilePath == null) {
+		System.out.println("Intializing log4j");
+		String LOG_FILE = ServerProps.logFilePath;
+		if (ServerProps.logFilePath == null) {
 			LOG_FILE = ClientProps.logFilePath;
 		} else {
-			LOG_FILE = Props.logFilePath;
+			LOG_FILE = ServerProps.logFilePath;
 		}
 		Properties logProp = new Properties();
 

@@ -14,6 +14,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.log4j.Logger;
 import org.umn.distributed.p2p.common.LoggingUtils;
 import org.umn.distributed.p2p.common.Machine;
+import org.umn.distributed.p2p.common.ServerProps;
 import org.umn.distributed.p2p.common.SharedConstants;
 import org.umn.distributed.p2p.common.SharedConstants.NODE_REQUEST_TO_SERVER;
 import org.umn.distributed.p2p.common.Utils;
@@ -28,7 +29,9 @@ public class TrackingServer implements TcpServerDelegate {
 	private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
 	protected final Lock readL = rwl.readLock();
 	protected final Lock writeL = rwl.writeLock();
-
+	protected boolean removeFailedPeers = false;
+	public static final String SERVER_PROPERTIES_FILE_NAME = "server.properties";
+	private static boolean testCodeLocal = false;
 	protected TrackingServer(int port, int numTreads) {
 		this.port = port;
 		this.tcpServer = new TCPServer(this, numTreads);
@@ -137,10 +140,11 @@ public class TrackingServer implements TcpServerDelegate {
 
 	private byte[] handleSpecificRequest(String request) {
 		if (!Utils.isEmpty(request)) {
-			String[] reqBrokenOnCommandParamSeparator = request
-					.split(SharedConstants.COMMAND_PARAM_SEPARATOR);
+			String[] reqBrokenOnCommandParamSeparator = request.split(
+					SharedConstants.COMMAND_PARAM_SEPARATOR_REGEX,
+					SharedConstants.NO_LIMIT_SPLIT);
 			logger.info("$$$$$$$$$$$$Message received at Tracking Server:"
-					+ reqBrokenOnCommandParamSeparator);
+					+ Arrays.toString(reqBrokenOnCommandParamSeparator));
 			if (request.startsWith(NODE_REQUEST_TO_SERVER.FILE_LIST.name())) {
 				/**
 				 * (FILE_LIST=[f1;f2;f3]|MACHINE=[M1]) Need to add all the files
@@ -171,15 +175,18 @@ public class TrackingServer implements TcpServerDelegate {
 				// TODO validation here
 				String[] filesFromCommandFrag = Utils
 						.getKeyAndValuefromFragment(commandFragments[0]);
-				String[] failedPeerList = Utils
-						.getKeyAndValuefromFragment(commandFragments[1]);
+				String[] failedPeerList = Utils.getKeyAndValuefromFragment(
+						commandFragments[1], SharedConstants.NO_LIMIT_SPLIT);
 
 				String peers = findPeersForFile(filesFromCommandFrag[1],
 						failedPeerList[1]);
-				// need to change this to make it consistent with sequential
-				// server
-				return Utils.stringToByte(SharedConstants.COMMAND_SUCCESS
-						+ SharedConstants.COMMAND_PARAM_SEPARATOR + peers);
+
+				return Utils
+						.stringToByte((Utils.isEmpty(peers) ? SharedConstants.COMMAND_FAILED
+								: SharedConstants.COMMAND_SUCCESS)
+								+ SharedConstants.COMMAND_PARAM_SEPARATOR
+								+ peers);
+
 			}
 		}
 
@@ -200,13 +207,26 @@ public class TrackingServer implements TcpServerDelegate {
 		StringBuilder peersWithFile = new StringBuilder();
 		Set<Machine> peersWithThisFile = getPeersForFile(fileNameToSearch);
 		List<Machine> failedPeerCollection = getCollectionFromPeerString(failedPeerList);
+		LoggingUtils.logDebug(logger,
+				"peersWithThisFile=%s;failedPeerCollection=%s",
+				peersWithThisFile, failedPeerCollection);
 		peersWithThisFile.removeAll(failedPeerCollection);
-		for (Machine m : failedPeerCollection) {
-			removeMachine(m);
+
+		if (removeFailedPeers) {
+			for (Machine m : failedPeerCollection) {
+				removeMachine(m);
+			}
 		}
+
 		for (Machine mc : peersWithThisFile) {
 			peersWithFile.append(mc.toString());
 		}
+		LoggingUtils
+				.logDebug(
+						logger,
+						"peersWithThisFile=%s;failedPeerCollection=%s;peersWithFile=%s",
+						peersWithThisFile, failedPeerCollection,
+						peersWithFile.toString());
 		return peersWithFile.toString();
 	}
 
@@ -237,7 +257,62 @@ public class TrackingServer implements TcpServerDelegate {
 		}
 	}
 
+	private static void showUsage() {
+		System.out.println("Usage:");
+		System.out
+				.println("\t Start TrackingServer: ./startTrackingServer.sh <config file path> [<server-start-port>]");
+	}
+
+	/**
+	 * parameters 1) TrackingServer <property_file> 2) TrackingServer
+	 * <property_file> server startPort
+	 * 
+	 * @param args
+	 */
 	public static void main(String[] args) {
+
+		if (testCodeLocal) {
+			testCodeLocally();
+		} else {
+			TrackingServer ts = null;
+			if (args.length >= 1 && args.length <= 2) {
+				String serverPropertyFileName = args[0];
+				ServerProps.loadProperties(serverPropertyFileName);
+				int port = 0;
+				ts = new TrackingServer(
+						Utils.findFreePort(ServerProps.SERVER_STARTING_PORT),
+						ServerProps.INTERNAL_SERVER_THREADS);
+				if (args.length == 2) {
+					try {
+						port = Integer.parseInt(args[1]);
+						if (!Utils.isValidPort(port)) {
+							System.out.println("Invalid port");
+							showUsage();
+							return;
+						}
+					} catch (NumberFormatException nfe) {
+						System.out.println("Invalid port");
+						showUsage();
+						return;
+					}
+				} else {
+					port = Utils.findFreePort(ServerProps.SERVER_STARTING_PORT);
+				}
+				ts = new TrackingServer(
+						Utils.findFreePort(ServerProps.SERVER_STARTING_PORT),
+						ServerProps.INTERNAL_SERVER_THREADS);
+				try {
+					ts.start();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+
+			}
+
+		}
+	}
+
+	private static void testCodeLocally() {
 		TrackingServer ts = new TrackingServer(Utils.findFreePort(3000), 10);
 		Machine[] machineArr = new Machine[2];
 		for (int i = 0; i < machineArr.length; i++) {
@@ -278,8 +353,32 @@ public class TrackingServer implements TcpServerDelegate {
 			System.out.println(Utils.byteToString(responseBytes));
 		}
 	}
-	
+
 	private static void testFileSearch(TrackingServer ts) {
-		
+		/**
+		 * create a list of files to be searched with the help of fileMap and
+		 * then manipulate this list
+		 * 
+		 * <pre>
+		 * Aim of this method is to test the request format
+		 * (FIND=<filename>|FAILED_SERVERS=[M1][M2])
+		 */
+		String requestFormat = "FIND=%s|FAILED_SERVERS=%s";
+		String finalRequest = null;
+		StringBuilder failedPeer = null;
+		for (Entry<String, HashSet<Machine>> entry : ts.filesServersMap
+				.entrySet()) {
+			failedPeer = new StringBuilder();
+			for (Machine m : entry.getValue()) {
+				failedPeer.append(m.toString());
+				break;
+			}
+			finalRequest = String.format(requestFormat, entry.getKey(),
+					failedPeer.toString());
+			byte[] result = ts.handleSpecificRequest(finalRequest);
+			System.out.println("result of find=" + Utils.byteToString(result)
+					+ " entrySet=" + entry.getValue());
+		}
+
 	}
 }
