@@ -103,14 +103,6 @@ public class TCPServer implements Runnable {
 						bos.write(buffer, 0, count);
 					}
 				} while (is.available() > 0);
-				// while (is.available() > 0 && (count = is.read(buffer)) > -1)
-				// {
-				// if (logger.isDebugEnabled()) {
-				// logger.debug("Read " + count + " bytes from socket "
-				// + socket);
-				// }
-				// bos.write(buffer, 0, count);
-				// }
 				bos.flush();
 				buffer = bos.toByteArray();
 				if (logger.isDebugEnabled()) {
@@ -130,6 +122,7 @@ public class TCPServer implements Runnable {
 				// socket
 			} catch (IOException e) {
 				logger.error("Error communicating with client", e);
+				delegate.handleServerException(e);
 			} finally {
 				try {
 					// TODO: Check do we really want to close it or not.

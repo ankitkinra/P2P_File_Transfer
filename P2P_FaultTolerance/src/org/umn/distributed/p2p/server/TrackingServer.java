@@ -140,6 +140,17 @@ public class TrackingServer implements TcpServerDelegate {
 
 	}
 
+	@Override
+	public void handleServerException(Exception e) {
+		// TODO Auto-generated method stub
+		/**
+		 * Here we do not need to handle any major things, so we can just log an
+		 * error
+		 */
+		LoggingUtils.logError(logger, e, "Error from the TCPServerHandler");
+
+	}
+
 	private byte[] handleSpecificRequest(String request) {
 		if (!Utils.isEmpty(request)) {
 			String[] reqBrokenOnCommandParamSeparator = request.split(
@@ -383,4 +394,5 @@ public class TrackingServer implements TcpServerDelegate {
 		}
 
 	}
+
 }

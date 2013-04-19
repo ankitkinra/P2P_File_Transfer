@@ -19,9 +19,7 @@ public class LoggingUtils {
 		String LOG_FILE = ServerProps.logFilePath;
 		if (ServerProps.logFilePath == null) {
 			LOG_FILE = ClientProps.logFilePath;
-		} else {
-			LOG_FILE = ServerProps.logFilePath;
-		}
+		} 
 		Properties logProp = new Properties();
 
 		try {
