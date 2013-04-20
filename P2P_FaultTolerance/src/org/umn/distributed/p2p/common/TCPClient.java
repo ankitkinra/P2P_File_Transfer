@@ -7,6 +7,7 @@ import java.net.Socket;
 import java.util.Random;
 
 import org.apache.log4j.Logger;
+import org.umn.distributed.p2p.server.ServerProps;
 
 public class TCPClient {
 	protected static Logger logger = Logger.getLogger(TCPClient.class);

@@ -1,7 +1,6 @@
 package org.umn.distributed.p2p.node;
 
 import java.util.Comparator;
-import java.util.PriorityQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -14,8 +13,12 @@ public class DownloadService {
 				downloadPriorityAssignment);
 	}
 
+	/**
+	 * Capture the request 
+	 * @param dwnldStatus
+	 */
 	public void acceptDownloadRequest(DownloadStatus dwnldStatus) {
-
+		
 	}
 
 	/**

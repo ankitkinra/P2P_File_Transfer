@@ -16,4 +16,12 @@ public class SharedConstants {
 	public static enum NODE_REQUEST_TO_SERVER {
 		FILE_LIST, ADDED_FILE_LIST, FIND;
 	};
+	
+	public static enum NODE_REQUEST_TO_NODE {
+		DOWNLOAD_FILE, GET_LOAD;
+	};
+	
+	public static enum FILES_UPDATE_MESSAGE_TYPE{
+		COMPLETE, ADDED
+	}
 }

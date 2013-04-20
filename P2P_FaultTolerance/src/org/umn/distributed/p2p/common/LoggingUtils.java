@@ -9,6 +9,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 import org.apache.log4j.PropertyConfigurator;
+import org.umn.distributed.p2p.server.ServerProps;
 
 public class LoggingUtils {
 	public static final String DEFAULT_DEBUG_PATTERN = "%d{dd-mm-yyyy HH:mm:ss,SSS} %5p %c{1}:%F:%L - %m%n";

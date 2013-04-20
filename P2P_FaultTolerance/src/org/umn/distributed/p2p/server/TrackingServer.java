@@ -12,21 +12,17 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.log4j.Logger;
+import org.umn.distributed.p2p.common.BasicServer;
 import org.umn.distributed.p2p.common.LoggingUtils;
 import org.umn.distributed.p2p.common.Machine;
-import org.umn.distributed.p2p.common.ServerProps;
 import org.umn.distributed.p2p.common.SharedConstants;
 import org.umn.distributed.p2p.common.TCPServer;
 import org.umn.distributed.p2p.common.TcpServerDelegate;
 import org.umn.distributed.p2p.common.SharedConstants.NODE_REQUEST_TO_SERVER;
 import org.umn.distributed.p2p.common.Utils;
 
-public class TrackingServer implements TcpServerDelegate {
+public class TrackingServer extends BasicServer {
 
-	protected Logger logger = Logger.getLogger(this.getClass());
-	private TCPServer tcpServer;
-	protected int port;
-	protected Machine myInfo;
 	protected HashMap<String, HashSet<Machine>> filesServersMap = new HashMap<String, HashSet<Machine>>();
 	private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
 	protected final Lock readL = rwl.readLock();
@@ -36,27 +32,10 @@ public class TrackingServer implements TcpServerDelegate {
 	private static boolean testCodeLocal = false;
 
 	protected TrackingServer(int port, int numTreads) {
-		this.port = port;
-		this.tcpServer = new TCPServer(this, numTreads);
+		super(port, numTreads);
 	}
 
-	public void start() throws Exception {
-		logger.info("****************Starting Server****************");
-		try {
-			this.port = this.tcpServer.startListening(this.port);
-			myInfo = new Machine(Utils.getLocalServerIp(), this.port);
-			startSpecific();
-		} catch (IOException ioe) {
-			logger.error("Error starting tcp server. Stopping now", ioe);
-			this.stop();
-			throw ioe;
-		}
-	}
-
-	public void startSpecific() {
-		// TODO
-	}
-
+	
 	protected boolean addFile(String fileName, Machine machine) {
 		writeL.lock();
 		try {
@@ -112,8 +91,15 @@ public class TrackingServer implements TcpServerDelegate {
 		return this.port;
 	}
 
-	public void stop() {
-		this.tcpServer.stop();
+	@Override
+	public void handleServerException(Exception e) {
+		// TODO Auto-generated method stub
+		/**
+		 * Here we do not need to handle any major things, so we can just log an
+		 * error
+		 */
+		LoggingUtils.logError(logger, e, "Error from the TCPServerHandler");
+
 	}
 
 	/**
@@ -127,63 +113,17 @@ public class TrackingServer implements TcpServerDelegate {
 	 * </pre>
 	 */
 	@Override
-	public byte[] handleRequest(byte[] request) {
-		try {
-			String req = Utils.byteToString(request);
-			return handleSpecificRequest(req);
-		} catch (Exception e) {
-			logger.error("Exception handling request in Tracking Server", e);
-			return Utils.stringToByte(SharedConstants.COMMAND_FAILED + SharedConstants.COMMAND_PARAM_SEPARATOR
-					+ e.getMessage());
-		}
-
-	}
-
-	@Override
-	public void handleServerException(Exception e) {
-		// TODO Auto-generated method stub
-		/**
-		 * Here we do not need to handle any major things, so we can just log an
-		 * error
-		 */
-		LoggingUtils.logError(logger, e, "Error from the TCPServerHandler");
-
-	}
-
-	private byte[] handleSpecificRequest(String request) {
+	protected byte[] handleSpecificRequest(String request) {
 		if (!Utils.isEmpty(request)) {
 			String[] reqBrokenOnCommandParamSeparator = request.split(SharedConstants.COMMAND_PARAM_SEPARATOR_REGEX,
 					SharedConstants.NO_LIMIT_SPLIT);
 			logger.info("$$$$$$$$$$$$Message received at Tracking Server:"
 					+ Arrays.toString(reqBrokenOnCommandParamSeparator));
 			if (request.startsWith(NODE_REQUEST_TO_SERVER.FILE_LIST.name())) {
-				/**
-				 * (FILE_LIST=[f1;f2;f3]|MACHINE=[M1]) Need to add all the files
-				 * from this server to the fileMap
-				 */
-				String[] commandFragments = Utils.splitCommandIntoFragments(request);
-				LoggingUtils.logDebug(logger, "request=%s;;commandFragments=%s;", request,
-						Arrays.toString(commandFragments));
-				// TODO validation here
-				String[] filesFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[0]);
-				String[] machineFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[1]);
-				addNodeFilesToMap(filesFromCommandFrag[1], Machine.parse(machineFromCommandFrag[1]));
-				// need to change this to make it consistent with sequential
-				// server
+				handleFileUpdateMessage(request);
 				return Utils.stringToByte(SharedConstants.COMMAND_SUCCESS);
 			} else if (request.startsWith(NODE_REQUEST_TO_SERVER.FIND.name())) {
-				/**
-				 * (FIND=<filename>|FAILED_SERVERS=[M1][M2]) Need to find all
-				 * the peers serving this file
-				 */
-				String[] commandFragments = Utils.splitCommandIntoFragments(request);
-				// TODO validation here
-				String[] filesFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[0]);
-				String[] failedPeerList = Utils.getKeyAndValuefromFragment(commandFragments[1],
-						SharedConstants.NO_LIMIT_SPLIT);
-
-				String peers = findPeersForFile(filesFromCommandFrag[1], failedPeerList[1]);
-
+				String peers = handleFindFileRequest(request);
 				return Utils.stringToByte((Utils.isEmpty(peers) ? SharedConstants.COMMAND_FAILED
 						: SharedConstants.COMMAND_SUCCESS) + SharedConstants.COMMAND_PARAM_SEPARATOR + peers);
 
@@ -192,6 +132,39 @@ public class TrackingServer implements TcpServerDelegate {
 
 		return Utils.stringToByte(SharedConstants.INVALID_COMMAND);
 
+	}
+
+
+	private String handleFindFileRequest(String request) {
+		/**
+		 * (FIND=<filename>|FAILED_SERVERS=[M1][M2]) Need to find all
+		 * the peers serving this file
+		 */
+		String[] commandFragments = Utils.splitCommandIntoFragments(request);
+		// TODO validation here
+		String[] filesFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[0]);
+		String[] failedPeerList = Utils.getKeyAndValuefromFragment(commandFragments[1],
+				SharedConstants.NO_LIMIT_SPLIT);
+
+		String peers = findPeersForFile(filesFromCommandFrag[1], failedPeerList[1]);
+		return peers;
+	}
+
+
+	private void handleFileUpdateMessage(String request) {
+		/**
+		 * (FILE_LIST=[f1;f2;f3]|MACHINE=[M1]) Need to add all the files
+		 * from this server to the fileMap
+		 */
+		String[] commandFragments = Utils.splitCommandIntoFragments(request);
+		LoggingUtils.logDebug(logger, "request=%s;;commandFragments=%s;", request,
+				Arrays.toString(commandFragments));
+		// TODO validation here
+		String[] filesFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[0]);
+		String[] machineFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[1]);
+		addNodeFilesToMap(filesFromCommandFrag[1], Machine.parse(machineFromCommandFrag[1]));
+		// need to change this to make it consistent with sequential
+		// server
 	}
 
 	/**
@@ -366,4 +339,16 @@ public class TrackingServer implements TcpServerDelegate {
 
 	}
 
+	@Override
+	protected void stopSpecific() {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+	@Override
+	protected void startSpecific() {
+		// TODO Auto-generated method stub
+		
+	}
 }

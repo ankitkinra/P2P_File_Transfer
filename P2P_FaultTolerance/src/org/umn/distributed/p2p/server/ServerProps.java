@@ -1,8 +1,10 @@
-package org.umn.distributed.p2p.common;
+package org.umn.distributed.p2p.server;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
+
+import org.umn.distributed.p2p.common.SharedConstants;
 
 public class ServerProps {
 	private static final String DEFAULT_SERVER_THREAD = "10";
