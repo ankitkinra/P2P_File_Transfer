@@ -20,13 +20,11 @@ public class ClientProps {
 		try {
 			prop.load(new FileInputStream(propertyFile));
 			ENCODING = prop.getProperty("encoding", "UTF8");
-			NETWORK_TIMEOUT = Integer.parseInt(prop
-					.getProperty("totalNetworkTimeout"));
-			QUORUM_SYNC_TIME_MILLIS = Integer.parseInt(prop.getProperty(
-					"quorumSyncTimeout", "300000"));
+			NETWORK_TIMEOUT = Integer.parseInt(prop.getProperty("totalNetworkTimeout"));
+			QUORUM_SYNC_TIME_MILLIS = Integer.parseInt(prop.getProperty("quorumSyncTimeout", "300000"));
 
-			maxPseudoNetworkDelay = Integer.parseInt(prop.getProperty(
-					"maxPseudoNetworkDelay", DEFAULT_MAX_PSEUDO_NW_DELAY));
+			maxPseudoNetworkDelay = Integer.parseInt(prop.getProperty("maxPseudoNetworkDelay",
+					DEFAULT_MAX_PSEUDO_NW_DELAY));
 			logFilePath = prop.getProperty("logFilePath");
 		} catch (IOException ex) {
 			ex.printStackTrace();

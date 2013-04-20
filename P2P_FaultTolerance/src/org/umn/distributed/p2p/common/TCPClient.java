@@ -12,11 +12,9 @@ public class TCPClient {
 	protected static Logger logger = Logger.getLogger(TCPClient.class);
 	private static Random randomDelay = new Random();
 
-	public static byte[] sendData(Machine remoteMachine, byte[] data)
-			throws IOException {
+	public static byte[] sendData(Machine remoteMachine, byte[] data) throws IOException {
 		if (logger.isDebugEnabled()) {
-			logger.debug("Send " + Utils.byteToString(data) + " to "
-					+ remoteMachine);
+			logger.debug("Send " + Utils.byteToString(data) + " to " + remoteMachine);
 		}
 		// Adding a random delay
 		int maxDelay = ServerProps.maxPseudoNetworkDelay;
@@ -27,9 +25,7 @@ public class TCPClient {
 		try {
 			Thread.sleep(delay);
 		} catch (InterruptedException e) {
-			LoggingUtils.logError(logger, e,
-					"Error while waiting by thread = %s", Thread
-							.currentThread().getName());
+			LoggingUtils.logError(logger, e, "Error while waiting by thread = %s", Thread.currentThread().getName());
 		}
 		/**
 		 * This will open a local socket and send the data to the remoteMachine
@@ -40,8 +36,7 @@ public class TCPClient {
 		InputStream is = null;
 		byte[] buffer = new byte[buffSize];
 		try {
-			clientSocket = new Socket(remoteMachine.getIP(),
-					remoteMachine.getPort());
+			clientSocket = new Socket(remoteMachine.getIP(), remoteMachine.getPort());
 			// TODO: add a timeout here to handle the writer thread waiting in
 			// the execution
 			clientSocket.getOutputStream().write(data);
@@ -68,8 +63,7 @@ public class TCPClient {
 			}
 		}
 		if (logger.isDebugEnabled()) {
-			logger.debug("Data received at client "
-					+ Utils.byteToString(buffer));
+			logger.debug("Data received at client " + Utils.byteToString(buffer));
 		}
 		return buffer;
 	}

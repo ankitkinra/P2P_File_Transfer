@@ -28,8 +28,7 @@ public class TestClient {
 	private HashMap<Integer, RoundSummary> roundSummaries = new HashMap<Integer, RoundSummary>();
 	private Random randomGenerator = new Random();
 
-	public TestClient(String xmlFilePath, String coordinatorIp,
-			int coordinatorPort) {
+	public TestClient(String xmlFilePath, String coordinatorIp, int coordinatorPort) {
 		this.xmlTestCasePath = xmlFilePath;
 		this.testSuite = getParsedTestSuite(xmlFilePath);
 		this.myCoord = new Machine(coordinatorIp, coordinatorPort);
@@ -66,7 +65,6 @@ public class TestClient {
 		}
 	}
 
-
 	private void startTest() {
 		for (int i = 0; i < this.testSuite.rounds.size(); i++) {
 			// init new summary
@@ -84,15 +82,13 @@ public class TestClient {
 					String childArticlesToPostStr = op.params.get("child");
 					int rootArticlesToPost = 0, repliesToPost = 0;
 					if (!Utils.isEmpty(rootArticlesToPostStr)) {
-						rootArticlesToPost = Integer
-								.parseInt(rootArticlesToPostStr);
+						rootArticlesToPost = Integer.parseInt(rootArticlesToPostStr);
 					}
 					if (!Utils.isEmpty(childArticlesToPostStr)) {
-						repliesToPost = Integer
-								.parseInt(childArticlesToPostStr);
+						repliesToPost = Integer.parseInt(childArticlesToPostStr);
 					}
 					try {
-						//performActivity
+						// performActivity
 					} catch (Exception e) {
 						logger.error("Error in posting articles", e);
 					}
@@ -107,7 +103,7 @@ public class TestClient {
 					for (int j = 0; j < op.repeatations + 1; j++) {
 						logger.info("In read items, iteration number = " + j);
 						try {
-							//verifyCorrectness
+							// verifyCorrectness
 						} catch (Exception e) {
 							logger.error("Error in readArticles articles", e);
 						}
@@ -118,30 +114,21 @@ public class TestClient {
 					String relativeArticleIdStr = op.params.get("id");
 					int relativeArticleId = 0;
 					if (!Utils.isEmpty(relativeArticleIdStr)) {
-						relativeArticleId = Integer
-								.parseInt(relativeArticleIdStr);
+						relativeArticleId = Integer.parseInt(relativeArticleIdStr);
 					}
 					try {
-						//verifyCorrectness
+						// verifyCorrectness
 					} catch (Exception e) {
-						logger.error("Error in reading articleId = "
-								+ relativeArticleId, e);
+						logger.error("Error in reading articleId = " + relativeArticleId, e);
 					}
 				}
 			}
 		}
 
-		LoggingUtils
-				.logInfo(
-						logger,
-						"Testing rounds are over for TestSuite =%s,\n here is the summary \n %s",
-						this.testSuite, this.roundSummaries);
+		LoggingUtils.logInfo(logger, "Testing rounds are over for TestSuite =%s,\n here is the summary \n %s",
+				this.testSuite, this.roundSummaries);
 
 	}
-
-	
-
-
 
 	private static TestSuite getParsedTestSuite(String filePath) {
 		BufferedReader in = null;

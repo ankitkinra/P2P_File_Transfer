@@ -86,20 +86,16 @@ public class Machine {
 		return builder.toString();
 	}
 
-	public static Machine parse(String machineStr)
-			throws IllegalArgumentException {
-		if (!machineStr.startsWith(FORMAT_START)
-				|| !machineStr.endsWith(FORMAT_END)) {
-			throw new IllegalArgumentException("Invalid machine format="
-					+ machineStr);
+	public static Machine parse(String machineStr) throws IllegalArgumentException {
+		if (!machineStr.startsWith(FORMAT_START) || !machineStr.endsWith(FORMAT_END)) {
+			throw new IllegalArgumentException("Invalid machine format=" + machineStr);
 		}
 		machineStr = machineStr.substring(1, machineStr.length() - 1);
 		String machineParams[] = machineStr.split(SharedConstants.COMMAND_LIST_SEPARATOR);
 		if (machineParams.length != 3) {
-			throw new IllegalArgumentException(
-					"Invalid machine parameter number");
+			throw new IllegalArgumentException("Invalid machine parameter number");
 		}
-		
+
 		int internalPort = 0;
 		int externalPort = 0;
 		try {
@@ -123,11 +119,11 @@ public class Machine {
 		}
 		return listMachines;
 	}
-	
+
 	public static String convertCollectionToString(Collection<Machine> machineCollection) {
 		StringBuilder sb = new StringBuilder();
-		
-		for (Machine m:machineCollection) {
+
+		for (Machine m : machineCollection) {
 			sb.append(m.toString());
 		}
 		return sb.toString();

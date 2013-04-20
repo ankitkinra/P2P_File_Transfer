@@ -29,7 +29,6 @@ public class ServerProps {
 	public static int maxPseudoNetworkDelay;
 	public static String logFilePath = "log4j.properties";
 
-	
 	public static void loadProperties(String propertyFile) {
 		Properties prop = new Properties();
 		try {
@@ -38,32 +37,23 @@ public class ServerProps {
 
 			// TODO: validate the port numbers before using
 
-			READER_SERVER_THREADS = Integer.parseInt(prop.getProperty(
-					"serverWriterThreads", DEFAULT_SERVER_THREAD));
-			WRITER_SERVER_THREADS = Integer.parseInt(prop.getProperty(
-					"serverReaderThreads", DEFAULT_SERVER_THREAD));
+			READER_SERVER_THREADS = Integer.parseInt(prop.getProperty("serverWriterThreads", DEFAULT_SERVER_THREAD));
+			WRITER_SERVER_THREADS = Integer.parseInt(prop.getProperty("serverReaderThreads", DEFAULT_SERVER_THREAD));
 
-			SERVER_EXTERNAL_PORT = Integer.parseInt(prop
-					.getProperty("serverExternalPort"));
-			EXTERNAL_SERVER_THREADS = Integer.parseInt(prop.getProperty(
-					"externalServerThreads", DEFAULT_SERVER_THREAD));
+			SERVER_EXTERNAL_PORT = Integer.parseInt(prop.getProperty("serverExternalPort"));
+			EXTERNAL_SERVER_THREADS = Integer
+					.parseInt(prop.getProperty("externalServerThreads", DEFAULT_SERVER_THREAD));
 
-			SERVER_INTERNAL_PORT = Integer.parseInt(prop
-					.getProperty("serverInternalPort"));
-			INTERNAL_SERVER_THREADS = Integer.parseInt(prop.getProperty(
-					"internalServerThreads", DEFAULT_SERVER_THREAD));
+			SERVER_INTERNAL_PORT = Integer.parseInt(prop.getProperty("serverInternalPort"));
+			INTERNAL_SERVER_THREADS = Integer
+					.parseInt(prop.getProperty("internalServerThreads", DEFAULT_SERVER_THREAD));
 
-			
+			HEARTBEAT_INTERVAL = Long.parseLong(prop.getProperty("heartbeatInterval"));
+			REMOVE_INTERVAL = Integer.parseInt(prop.getProperty("deregisterInterval"));
+			NETWORK_TIMEOUT = Integer.parseInt(prop.getProperty("totalNetworkTimeout"));
 
-			HEARTBEAT_INTERVAL = Long.parseLong(prop
-					.getProperty("heartbeatInterval"));
-			REMOVE_INTERVAL = Integer.parseInt(prop
-					.getProperty("deregisterInterval"));
-			NETWORK_TIMEOUT = Integer.parseInt(prop
-					.getProperty("totalNetworkTimeout"));
-			
-			maxPseudoNetworkDelay = Integer.parseInt(prop.getProperty(
-					"maxPseudoNetworkDelay", DEFAULT_MAX_PSEUDO_NW_DELAY));
+			maxPseudoNetworkDelay = Integer.parseInt(prop.getProperty("maxPseudoNetworkDelay",
+					DEFAULT_MAX_PSEUDO_NW_DELAY));
 			logFilePath = prop.getProperty("logFilePath");
 
 		} catch (IOException ex) {

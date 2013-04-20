@@ -34,6 +34,7 @@ public class TrackingServer implements TcpServerDelegate {
 	protected boolean removeFailedPeers = false;
 	public static final String SERVER_PROPERTIES_FILE_NAME = "server.properties";
 	private static boolean testCodeLocal = false;
+
 	protected TrackingServer(int port, int numTreads) {
 		this.port = port;
 		this.tcpServer = new TCPServer(this, numTreads);
@@ -83,8 +84,7 @@ public class TrackingServer implements TcpServerDelegate {
 	protected void removeMachine(Machine m) {
 		writeL.lock();
 		try {
-			for (Entry<String, HashSet<Machine>> entry : this.filesServersMap
-					.entrySet()) {
+			for (Entry<String, HashSet<Machine>> entry : this.filesServersMap.entrySet()) {
 				entry.getValue().remove(m); // for each article remove the
 											// peer
 			}
@@ -100,8 +100,7 @@ public class TrackingServer implements TcpServerDelegate {
 			if (this.filesServersMap.containsKey(fileName)) {
 				machineSet.addAll(this.filesServersMap.get(fileName));
 			} else {
-				logger.warn("tried to find machines for an unknown article ="
-						+ fileName);
+				logger.warn("tried to find machines for an unknown article =" + fileName);
 			}
 		} finally {
 			readL.unlock();
@@ -134,8 +133,8 @@ public class TrackingServer implements TcpServerDelegate {
 			return handleSpecificRequest(req);
 		} catch (Exception e) {
 			logger.error("Exception handling request in Tracking Server", e);
-			return Utils.stringToByte(SharedConstants.COMMAND_FAILED
-					+ SharedConstants.COMMAND_PARAM_SEPARATOR + e.getMessage());
+			return Utils.stringToByte(SharedConstants.COMMAND_FAILED + SharedConstants.COMMAND_PARAM_SEPARATOR
+					+ e.getMessage());
 		}
 
 	}
@@ -153,8 +152,7 @@ public class TrackingServer implements TcpServerDelegate {
 
 	private byte[] handleSpecificRequest(String request) {
 		if (!Utils.isEmpty(request)) {
-			String[] reqBrokenOnCommandParamSeparator = request.split(
-					SharedConstants.COMMAND_PARAM_SEPARATOR_REGEX,
+			String[] reqBrokenOnCommandParamSeparator = request.split(SharedConstants.COMMAND_PARAM_SEPARATOR_REGEX,
 					SharedConstants.NO_LIMIT_SPLIT);
 			logger.info("$$$$$$$$$$$$Message received at Tracking Server:"
 					+ Arrays.toString(reqBrokenOnCommandParamSeparator));
@@ -163,18 +161,13 @@ public class TrackingServer implements TcpServerDelegate {
 				 * (FILE_LIST=[f1;f2;f3]|MACHINE=[M1]) Need to add all the files
 				 * from this server to the fileMap
 				 */
-				String[] commandFragments = Utils
-						.splitCommandIntoFragments(request);
-				LoggingUtils.logDebug(logger,
-						"request=%s;;commandFragments=%s;", request,
+				String[] commandFragments = Utils.splitCommandIntoFragments(request);
+				LoggingUtils.logDebug(logger, "request=%s;;commandFragments=%s;", request,
 						Arrays.toString(commandFragments));
 				// TODO validation here
-				String[] filesFromCommandFrag = Utils
-						.getKeyAndValuefromFragment(commandFragments[0]);
-				String[] machineFromCommandFrag = Utils
-						.getKeyAndValuefromFragment(commandFragments[1]);
-				addNodeFilesToMap(filesFromCommandFrag[1],
-						Machine.parse(machineFromCommandFrag[1]));
+				String[] filesFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[0]);
+				String[] machineFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[1]);
+				addNodeFilesToMap(filesFromCommandFrag[1], Machine.parse(machineFromCommandFrag[1]));
 				// need to change this to make it consistent with sequential
 				// server
 				return Utils.stringToByte(SharedConstants.COMMAND_SUCCESS);
@@ -183,22 +176,16 @@ public class TrackingServer implements TcpServerDelegate {
 				 * (FIND=<filename>|FAILED_SERVERS=[M1][M2]) Need to find all
 				 * the peers serving this file
 				 */
-				String[] commandFragments = Utils
-						.splitCommandIntoFragments(request);
+				String[] commandFragments = Utils.splitCommandIntoFragments(request);
 				// TODO validation here
-				String[] filesFromCommandFrag = Utils
-						.getKeyAndValuefromFragment(commandFragments[0]);
-				String[] failedPeerList = Utils.getKeyAndValuefromFragment(
-						commandFragments[1], SharedConstants.NO_LIMIT_SPLIT);
+				String[] filesFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[0]);
+				String[] failedPeerList = Utils.getKeyAndValuefromFragment(commandFragments[1],
+						SharedConstants.NO_LIMIT_SPLIT);
 
-				String peers = findPeersForFile(filesFromCommandFrag[1],
-						failedPeerList[1]);
+				String peers = findPeersForFile(filesFromCommandFrag[1], failedPeerList[1]);
 
-				return Utils
-						.stringToByte((Utils.isEmpty(peers) ? SharedConstants.COMMAND_FAILED
-								: SharedConstants.COMMAND_SUCCESS)
-								+ SharedConstants.COMMAND_PARAM_SEPARATOR
-								+ peers);
+				return Utils.stringToByte((Utils.isEmpty(peers) ? SharedConstants.COMMAND_FAILED
+						: SharedConstants.COMMAND_SUCCESS) + SharedConstants.COMMAND_PARAM_SEPARATOR + peers);
 
 			}
 		}
@@ -215,14 +202,12 @@ public class TrackingServer implements TcpServerDelegate {
 	 * @param failedPeerList
 	 * @return
 	 */
-	private String findPeersForFile(String fileNameToSearch,
-			String failedPeerList) {
+	private String findPeersForFile(String fileNameToSearch, String failedPeerList) {
 		StringBuilder peersWithFile = new StringBuilder();
 		Set<Machine> peersWithThisFile = getPeersForFile(fileNameToSearch);
 		List<Machine> failedPeerCollection = getCollectionFromPeerString(failedPeerList);
-		LoggingUtils.logDebug(logger,
-				"peersWithThisFile=%s;failedPeerCollection=%s",
-				peersWithThisFile, failedPeerCollection);
+		LoggingUtils.logDebug(logger, "peersWithThisFile=%s;failedPeerCollection=%s", peersWithThisFile,
+				failedPeerCollection);
 		peersWithThisFile.removeAll(failedPeerCollection);
 
 		if (removeFailedPeers) {
@@ -234,12 +219,8 @@ public class TrackingServer implements TcpServerDelegate {
 		for (Machine mc : peersWithThisFile) {
 			peersWithFile.append(mc.toString());
 		}
-		LoggingUtils
-				.logDebug(
-						logger,
-						"peersWithThisFile=%s;failedPeerCollection=%s;peersWithFile=%s",
-						peersWithThisFile, failedPeerCollection,
-						peersWithFile.toString());
+		LoggingUtils.logDebug(logger, "peersWithThisFile=%s;failedPeerCollection=%s;peersWithFile=%s",
+				peersWithThisFile, failedPeerCollection, peersWithFile.toString());
 		return peersWithFile.toString();
 	}
 
@@ -259,12 +240,9 @@ public class TrackingServer implements TcpServerDelegate {
 		 * Assumption allFileList=[file1;file2;file3]
 		 * 
 		 */
-		String realFileList = allFileList
-				.substring(1, allFileList.length() - 1);
-		LoggingUtils.logDebug(logger,
-				"Real File List after prefix removal=>>%s<<", realFileList);
-		String[] files = Utils.getStringSplitToArr(realFileList,
-				SharedConstants.COMMAND_LIST_SEPARATOR);
+		String realFileList = allFileList.substring(1, allFileList.length() - 1);
+		LoggingUtils.logDebug(logger, "Real File List after prefix removal=>>%s<<", realFileList);
+		String[] files = Utils.getStringSplitToArr(realFileList, SharedConstants.COMMAND_LIST_SEPARATOR);
 		for (String file : files) {
 			addFile(file, sendNode);
 		}
@@ -292,8 +270,7 @@ public class TrackingServer implements TcpServerDelegate {
 				String serverPropertyFileName = args[0];
 				ServerProps.loadProperties(serverPropertyFileName);
 				int port = 0;
-				ts = new TrackingServer(
-						Utils.findFreePort(ServerProps.SERVER_STARTING_PORT),
+				ts = new TrackingServer(Utils.findFreePort(ServerProps.SERVER_STARTING_PORT),
 						ServerProps.INTERNAL_SERVER_THREADS);
 				if (args.length == 2) {
 					try {
@@ -311,8 +288,7 @@ public class TrackingServer implements TcpServerDelegate {
 				} else {
 					port = Utils.findFreePort(ServerProps.SERVER_STARTING_PORT);
 				}
-				ts = new TrackingServer(
-						Utils.findFreePort(ServerProps.SERVER_STARTING_PORT),
+				ts = new TrackingServer(Utils.findFreePort(ServerProps.SERVER_STARTING_PORT),
 						ServerProps.INTERNAL_SERVER_THREADS);
 				try {
 					ts.start();
@@ -354,11 +330,9 @@ public class TrackingServer implements TcpServerDelegate {
 			StringBuilder sb = new StringBuilder("FILE_LIST=[");
 			System.out.println("########filesToAdd=" + filesToAdd);
 			for (int j = 0; j < filesToAdd; j = j + r.nextInt(2) + 1) {
-				sb.append("file_" + j++).append(
-						SharedConstants.COMMAND_LIST_SEPARATOR);
+				sb.append("file_" + j++).append(SharedConstants.COMMAND_LIST_SEPARATOR);
 			}
-			sb.append("]").append(SharedConstants.COMMAND_PARAM_SEPARATOR)
-					.append("MACHINE=").append(m.toString());
+			sb.append("]").append(SharedConstants.COMMAND_PARAM_SEPARATOR).append("MACHINE=").append(m.toString());
 			request = sb.toString();
 			System.out.println("Node request = " + request);
 			byte[] responseBytes = ts.handleSpecificRequest(request);
@@ -379,18 +353,15 @@ public class TrackingServer implements TcpServerDelegate {
 		String requestFormat = "FIND=%s|FAILED_SERVERS=%s";
 		String finalRequest = null;
 		StringBuilder failedPeer = null;
-		for (Entry<String, HashSet<Machine>> entry : ts.filesServersMap
-				.entrySet()) {
+		for (Entry<String, HashSet<Machine>> entry : ts.filesServersMap.entrySet()) {
 			failedPeer = new StringBuilder();
 			for (Machine m : entry.getValue()) {
 				failedPeer.append(m.toString());
 				break;
 			}
-			finalRequest = String.format(requestFormat, entry.getKey(),
-					failedPeer.toString());
+			finalRequest = String.format(requestFormat, entry.getKey(), failedPeer.toString());
 			byte[] result = ts.handleSpecificRequest(finalRequest);
-			System.out.println("result of find=" + Utils.byteToString(result)
-					+ " entrySet=" + entry.getValue());
+			System.out.println("result of find=" + Utils.byteToString(result) + " entrySet=" + entry.getValue());
 		}
 
 	}

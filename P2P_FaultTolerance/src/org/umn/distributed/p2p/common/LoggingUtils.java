@@ -19,7 +19,7 @@ public class LoggingUtils {
 		String LOG_FILE = ServerProps.logFilePath;
 		if (ServerProps.logFilePath == null) {
 			LOG_FILE = ClientProps.logFilePath;
-		} 
+		}
 		Properties logProp = new Properties();
 
 		try {
@@ -38,26 +38,22 @@ public class LoggingUtils {
 
 	}
 
-	public static void addSpecificFileAppender(Class classInitLogger,
-			String logFileDirectory, String uniqueSuffix, Level level) {
-		addSpecificFileAppender(classInitLogger, logFileDirectory,
-				uniqueSuffix, level, DEFAULT_DEBUG_PATTERN);
+	public static void addSpecificFileAppender(Class classInitLogger, String logFileDirectory, String uniqueSuffix,
+			Level level) {
+		addSpecificFileAppender(classInitLogger, logFileDirectory, uniqueSuffix, level, DEFAULT_DEBUG_PATTERN);
 	}
 
-	public static void addSpecificFleAppender(Class classInitLogger,
-			String logFileDirectory, String uniqueSuffix) {
-		addSpecificFileAppender(classInitLogger, logFileDirectory,
-				uniqueSuffix, DEFAULT_LOG_LEVEL, DEFAULT_DEBUG_PATTERN);
+	public static void addSpecificFleAppender(Class classInitLogger, String logFileDirectory, String uniqueSuffix) {
+		addSpecificFileAppender(classInitLogger, logFileDirectory, uniqueSuffix, DEFAULT_LOG_LEVEL,
+				DEFAULT_DEBUG_PATTERN);
 	}
 
-	public static void addSpecificFileAppender(Class classInitLogger,
-			String logFileDirectory, String uniqueSuffix, Level level,
-			String pattern) {
+	public static void addSpecificFileAppender(Class classInitLogger, String logFileDirectory, String uniqueSuffix,
+			Level level, String pattern) {
 		FileAppender appender = new FileAppender();
 		appender.setName(classInitLogger.getCanonicalName());
 		appender.setLayout(new PatternLayout(pattern));
-		appender.setFile(logFileDirectory + classInitLogger.getSimpleName()
-				+ "_" + uniqueSuffix + ".log");
+		appender.setFile(logFileDirectory + classInitLogger.getSimpleName() + "_" + uniqueSuffix + ".log");
 		appender.setAppend(true);
 		appender.setThreshold(level);
 		appender.activateOptions();
@@ -70,8 +66,7 @@ public class LoggingUtils {
 		}
 	}
 
-	public static void logMessage(Level level, Logger log, String format,
-			Object... args) {
+	public static void logMessage(Level level, Logger log, String format, Object... args) {
 
 		if (level.equals(Level.DEBUG)) {
 			logDebug(log, format, args);
@@ -89,8 +84,7 @@ public class LoggingUtils {
 
 	}
 
-	public static void logError(Logger log, Exception e, String format,
-			Object... args) {
+	public static void logError(Logger log, Exception e, String format, Object... args) {
 		log.error(String.format(format, args), e);
 	}
 

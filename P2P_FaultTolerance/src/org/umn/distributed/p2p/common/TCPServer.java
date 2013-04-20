@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
 
-
 public class TCPServer implements Runnable {
 	private Logger logger = Logger.getLogger(this.getClass());
 	private static long STOP_TIMEOUT = 1000;
@@ -39,12 +38,10 @@ public class TCPServer implements Runnable {
 
 	@Override
 	public void run() {
-		logger.debug("Started tcpServer on port:"
-				+ this.serverSocket.getLocalPort());
+		logger.debug("Started tcpServer on port:" + this.serverSocket.getLocalPort());
 		while (running) {
 			try {
-				this.executerService
-						.execute(new Handler(serverSocket.accept()));
+				this.executerService.execute(new Handler(serverSocket.accept()));
 			} catch (IOException e) {
 				logger.error("Error accepting connection from client", e);
 			}
@@ -52,8 +49,7 @@ public class TCPServer implements Runnable {
 	}
 
 	public void stop() {
-		logger.debug("Stopping TcpServer on port:"
-				+ this.serverSocket.getLocalPort());
+		logger.debug("Stopping TcpServer on port:" + this.serverSocket.getLocalPort());
 		this.running = false;
 		try {
 			this.serverSocket.close();
@@ -63,11 +59,9 @@ public class TCPServer implements Runnable {
 		logger.debug("ServerSocket closed");
 		this.executerService.shutdown();
 		try {
-			if (!this.executerService.awaitTermination(STOP_TIMEOUT,
-					TimeUnit.MILLISECONDS)) {
+			if (!this.executerService.awaitTermination(STOP_TIMEOUT, TimeUnit.MILLISECONDS)) {
 				this.executerService.shutdownNow();
-				if (!this.executerService.awaitTermination(STOP_TIMEOUT,
-						TimeUnit.SECONDS)) {
+				if (!this.executerService.awaitTermination(STOP_TIMEOUT, TimeUnit.SECONDS)) {
 					logger.error("Thread pool did not terminate");
 				}
 			}
@@ -106,13 +100,11 @@ public class TCPServer implements Runnable {
 				bos.flush();
 				buffer = bos.toByteArray();
 				if (logger.isDebugEnabled()) {
-					logger.debug("Data received at server: "
-							+ Utils.byteToString(buffer));
+					logger.debug("Data received at server: " + Utils.byteToString(buffer));
 				}
 				buffer = delegate.handleRequest(buffer);
 				if (logger.isDebugEnabled()) {
-					logger.debug("Data returned to client :"
-							+ Utils.byteToString(buffer));
+					logger.debug("Data returned to client :" + Utils.byteToString(buffer));
 				}
 				socket.getOutputStream().write(buffer);
 				bos.close();

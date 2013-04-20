@@ -80,15 +80,13 @@ public class Utils {
 			return myIP;
 		}
 		try {
-			Enumeration<NetworkInterface> en = NetworkInterface
-					.getNetworkInterfaces();
+			Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces();
 			while (en.hasMoreElements()) {
 				NetworkInterface intf = en.nextElement();
 				Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses();
 				while (enumIpAddr.hasMoreElements()) {
 					InetAddress inetAddress = enumIpAddr.nextElement();
-					if (!inetAddress.isLoopbackAddress()
-							&& !inetAddress.isLinkLocalAddress()) {
+					if (!inetAddress.isLoopbackAddress() && !inetAddress.isLinkLocalAddress()) {
 						myIP = inetAddress.getHostAddress().toString();
 						logger.debug("localhost ip found:" + myIP);
 						return myIP;
@@ -142,35 +140,28 @@ public class Utils {
 	}
 
 	public static String[] getKeyAndValuefromFragment(String commandFragment) {
-		return getStringSplitToArr(commandFragment,
-				SharedConstants.COMMAND_VALUE_SEPARATOR);
+		return getStringSplitToArr(commandFragment, SharedConstants.COMMAND_VALUE_SEPARATOR);
 	}
 
-	public static String[] getKeyAndValuefromFragment(String commandFragment,
-			int limit) {
-		return getStringSplitToArr(commandFragment,
-				SharedConstants.COMMAND_VALUE_SEPARATOR, limit);
+	public static String[] getKeyAndValuefromFragment(String commandFragment, int limit) {
+		return getStringSplitToArr(commandFragment, SharedConstants.COMMAND_VALUE_SEPARATOR, limit);
 	}
 
 	public static String[] splitCommandIntoFragments(String command) {
-		return getStringSplitToArr(command,
-				SharedConstants.COMMAND_PARAM_SEPARATOR_REGEX, 0);
+		return getStringSplitToArr(command, SharedConstants.COMMAND_PARAM_SEPARATOR_REGEX, 0);
 	}
 
 	public static String[] splitCommandIntoFragments(String command, int limit) {
-		return getStringSplitToArr(command,
-				SharedConstants.COMMAND_PARAM_SEPARATOR_REGEX, limit);
+		return getStringSplitToArr(command, SharedConstants.COMMAND_PARAM_SEPARATOR_REGEX, limit);
 	}
 
-	public static String[] getStringSplitToArr(String commandFragment,
-			String keyValueSeparator) {
+	public static String[] getStringSplitToArr(String commandFragment, String keyValueSeparator) {
 
 		return commandFragment.split(keyValueSeparator, 0);
 
 	}
 
-	public static String[] getStringSplitToArr(String commandFragment,
-			String keyValueSeparator, int limit) {
+	public static String[] getStringSplitToArr(String commandFragment, String keyValueSeparator, int limit) {
 		return commandFragment.split(keyValueSeparator, limit);
 
 	}
