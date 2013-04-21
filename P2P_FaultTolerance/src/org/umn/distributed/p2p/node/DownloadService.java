@@ -3,7 +3,6 @@ package org.umn.distributed.p2p.node;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,18 +24,20 @@ public class DownloadService {
 	private Machine myMachineInfo = null;
 	private DownloadRetryPolicy downloadRetryPolicy = null;
 	private FailureQueueMonitor failedQMonitor = null;
+	private AtomicInteger activeDownloadCount;
 
 	/*
 	 * TODO need to keep a thread looking at the failedTask as it could fail due
 	 * to server failure or corrupt file
 	 */
-	public DownloadService(AtomicInteger currentDownloads, DownloadRetryPolicy downloadRetryPolicy,
+	public DownloadService(AtomicInteger activeDownloadCount, DownloadRetryPolicy downloadRetryPolicy,
 			Comparator<DownloadQueueObject> downloadPriorityAssignment, int initDownloadQueueCapacity,
 			String outputFolder, Machine myMachine) {
 		this.service = Executors.newFixedThreadPool(initDownloadQueueCapacity);
 		this.outputFolder = outputFolder;
 		this.myMachineInfo = myMachine;
 		this.downloadRetryPolicy = downloadRetryPolicy;
+		this.activeDownloadCount = activeDownloadCount;
 	}
 
 	public void start() {
@@ -44,7 +45,15 @@ public class DownloadService {
 	}
 
 	public void stop() {
-		this.failedQMonitor.interrupt();
+		try {
+			this.failedQMonitor.interrupt();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+			this.service.shutdown();
+		}
+
 	}
 
 	/**
@@ -55,14 +64,40 @@ public class DownloadService {
 	public void acceptDownloadRequest(DownloadStatus dwnldStatus) {
 
 		this.service.execute(new DownloadQueueObject(dwnldStatus.getFileToDownload(), dwnldStatus
-				.getPeersToDownloadFrom().keySet(), this.myMachineInfo, this.failedTaskQ, this.outputFolder));
+				.getPeersToDownloadFrom(), this.myMachineInfo, this.failedTaskQ, this.outputFolder,
+				this.activeDownloadCount));
 	}
 
-	public void shutDown() {
-		this.service.shutdown();
-	}
-
+	/**
+	 * Aim is to monitor the failedProcessQueue and then see what task to
+	 * process based on the retry policy this thread will activate every
+	 * FAILED_TASK_RETRY_INTERVAL and will pick MAX_TASK_TO_RETRY_EVERY_INTERVAL
+	 * to give the new task a better chance to run
+	 * 
+	 * @author akinra
+	 * 
+	 */
 	private class FailureQueueMonitor extends Thread {
+		boolean isCancelled = false;
 
+		public void run() {
+			while (!isCancelled) {
+				try {
+					Thread.sleep(NodeProps.FAILED_TASK_RETRY_INTERVAL);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				int counter = 0;
+				while (!failedTaskQ.isEmpty()) {
+					if (counter++ > NodeProps.MAX_TASK_TO_RETRY_EVERY_INTERVAL) {
+						DownloadQueueObject taskToRetry = failedTaskQ.poll();
+						if (downloadRetryPolicy.shouldRetry(taskToRetry)) {
+							service.execute(taskToRetry);
+						}
+					}
+				}
+			}
+		}
 	}
 }

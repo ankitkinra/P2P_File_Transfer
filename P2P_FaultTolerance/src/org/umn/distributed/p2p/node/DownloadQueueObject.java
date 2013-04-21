@@ -8,8 +8,10 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
 import org.umn.distributed.p2p.common.LoggingUtils;
@@ -32,30 +34,51 @@ public class DownloadQueueObject implements Runnable {
 	private Logger logger = Logger.getLogger(getClass());
 	private String nodeSpecificOutputFolder = null;
 	private Random r = new Random();
+	private AtomicInteger activeDownloadCount;
+	private Map<PeerMachine, DOWNLOAD_ACTIVITY> peerDownloadStatus;
+
+	public String getFileToDownload() {
+		return fileToDownload;
+	}
+
+	public DOWNLOAD_ACTIVITY getDownloadActivityStatus() {
+		return downloadActivityStatus;
+	}
+
+	public EnumMap<DOWNLOAD_ERRORS, Integer> getDownloadErrorMap() {
+		return downloadErrorMap;
+	}
 	
+	
+
 	/**
 	 * 1) task is to determine from which peer should we start downloading 1 a)
 	 * This is done by looking at the PeerMachine and sorting them according to
 	 * the sort order PeerMachine.peerSelectionPolicy, once we have them order,
 	 * we do
+	 * 
+	 * @param activeDownloadCount
 	 */
-	public DownloadQueueObject(String fileToDownload, Collection<PeerMachine> peersToDwnld, Machine myMachineInfo,
-			Queue<DownloadQueueObject> failedTaskQueue, String nodeSpecificOutputFolder) {
+	public DownloadQueueObject(String fileToDownload, Map<PeerMachine, DOWNLOAD_ACTIVITY> mapPeerMachineDownloadStatus, Machine myMachineInfo,
+			Queue<DownloadQueueObject> failedTaskQueue, String nodeSpecificOutputFolder,
+			AtomicInteger activeDownloadCount) {
 		this.fileToDownload = fileToDownload;
-		this.peersToDownloadFrom = convertToList(peersToDwnld);
+		this.peersToDownloadFrom = convertToList(mapPeerMachineDownloadStatus);
+		this.peerDownloadStatus = mapPeerMachineDownloadStatus;
 		this.myMachineInfo = myMachineInfo;
 		this.failedTaskQRef = failedTaskQueue;
 		this.nodeSpecificOutputFolder = nodeSpecificOutputFolder;
 		Collections.sort(this.peersToDownloadFrom, PeerMachine.PEER_SELECTION_POLICY);
+		this.activeDownloadCount = activeDownloadCount;
 
 		downloadErrorMap.put(DOWNLOAD_ERRORS.FILE_CORRUPT, 0);
 		downloadErrorMap.put(DOWNLOAD_ERRORS.OTHER, 0);
 		downloadErrorMap.put(DOWNLOAD_ERRORS.PEER_UNREACHABLE, 0);
 	}
 
-	private List<PeerMachine> convertToList(Collection<PeerMachine> peersToDwnld) {
+	private List<PeerMachine> convertToList(Map<PeerMachine, DOWNLOAD_ACTIVITY> mapPeerMachineDownloadStatus) {
 		List<PeerMachine> peers = new ArrayList<PeerMachine>();
-		for (PeerMachine m : peersToDwnld) {
+		for (PeerMachine m : mapPeerMachineDownloadStatus.keySet()) {
 			peers.add(m);
 		}
 		return peers;
@@ -89,6 +112,12 @@ public class DownloadQueueObject implements Runnable {
 	}
 
 	private void downloadFileFromPeer(String fileToDownload2, PeerMachine m) {
+		this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.STARTED);
+		int activeCount = this.activeDownloadCount.addAndGet(1);
+		LoggingUtils.logDebug(logger,
+				"Starting the download on the peer = %s for the file =%s and the activeDownloadCount = %s", m,
+				fileToDownload2, activeCount);
+		
 		StringBuilder downloadFileMessage = new StringBuilder(SharedConstants.NODE_REQUEST_TO_NODE.DOWNLOAD_FILE.name());
 		downloadFileMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(fileToDownload2);
 		downloadFileMessage.append(SharedConstants.COMMAND_PARAM_SEPARATOR).append("MACHINE")
@@ -116,6 +145,7 @@ public class DownloadQueueObject implements Runnable {
 			LoggingUtils.logError(logger, e, "Error in communicating with tracker server");
 			downloadErrorMap.put(DOWNLOAD_ERRORS.PEER_UNREACHABLE,
 					downloadErrorMap.get(DOWNLOAD_ERRORS.PEER_UNREACHABLE) + 1);
+			this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.FAILED);
 			failedMachines.add(m);
 			failedTaskQRef.add(this);
 		}

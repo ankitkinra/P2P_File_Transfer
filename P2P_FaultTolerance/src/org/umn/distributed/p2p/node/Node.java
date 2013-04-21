@@ -18,20 +18,18 @@ import org.umn.distributed.p2p.common.SharedConstants;
 import org.umn.distributed.p2p.common.SharedConstants.FILES_UPDATE_MESSAGE_TYPE;
 import org.umn.distributed.p2p.common.SharedConstants.NODE_REQUEST_TO_NODE;
 import org.umn.distributed.p2p.common.TCPClient;
-import org.umn.distributed.p2p.common.TCPServer;
 import org.umn.distributed.p2p.common.Utils;
 
 public class Node extends BasicServer {
 
 	protected Logger logger = Logger.getLogger(this.getClass());
-	private TCPServer tcpServer;
 	protected int port;
 	protected Machine myInfo;
 	private final AtomicInteger currentUploads = new AtomicInteger(0);
 	private final AtomicInteger currentDownloads = new AtomicInteger(0);
 	private int initDownloadQueueCapacity = 10;
 	private int initUploadQueueCapacity = 10;
-	private DownloadRetryPolicy downloadRetryPolicy = null;
+	private DownloadRetryPolicy downloadRetryPolicy = new FileDownloadErrorRetryPolicy();
 	private Machine myTrackingServer = null;
 	private String directoryToWatchAndSave = null;
 	private UpdateTrackingServer updateServerThread = new UpdateTrackingServer();
@@ -50,6 +48,8 @@ public class Node extends BasicServer {
 	protected Node(int port, int numTreads, Machine trackingServer) {
 		super(port, numTreads);
 		this.myTrackingServer = trackingServer;
+		this.unfinishedDownloadStatus = new PriorityQueue<DownloadStatus>(10,
+				DownloadStatus.DOWNLOAD_STATUS_SORTED_BY_UNFINISHED_STATUS);
 	}
 
 	public static void main(String[] args) {
@@ -111,12 +111,13 @@ public class Node extends BasicServer {
 		String[] requestArr = Utils.splitCommandIntoFragments(request);
 		String[] fileNameArr = Utils.getKeyAndValuefromFragment(requestArr[0]);
 		String[] destMachineArr = Utils.getKeyAndValuefromFragment(requestArr[1]);
-		UploadService.uploadFile(fileNameArr[1], destMachineArr[1], socketOutput);
+		Machine m = Machine.parse(destMachineArr[1]);
+		uploadService.uploadFile(fileNameArr[1], m, socketOutput);
 	}
 
 	/**
 	 * <pre>
-	 * (FIND=<filename>|FAILED_SERVERS=[M1][M2][M3]) Node asking for a file's
+	 * Sends (FIND=<filename>|FAILED_SERVERS=[M1][M2][M3]) to trackingServer asking for a file's
 	 * peers 
 	 * ReturnMessage = SUCCESS|[M1][M2][M3] *OR* FAILED
 	 * 
@@ -208,12 +209,26 @@ public class Node extends BasicServer {
 
 	}
 
+	/**
+	 * <pre>
+	 * adds the download request into the downloadServices queue
+	 * We can track the unfinished jobs in the unfinishedDownloadStatus
+	 * @param fileName
+	 * @return
+	 * @throws IOException this means that the Tracking Sever is down. Need to act by blocking
+	 */
+	public void downloadFileFromPeer(String fileName, List<PeerMachine> avlblPeers) throws IOException {
+		DownloadStatus downloadStatus = new DownloadStatus(fileName, avlblPeers);
+		this.unfinishedDownloadStatus.add(downloadStatus);
+		downloadService.acceptDownloadRequest(downloadStatus);
+	}
+
 	private List<String> getFilesFromTheWatchedDirectory(long lastUpdateTime) {
 		List<String> listOfFiles = new ArrayList<String>();
 		File dir = new File(directoryToWatchAndSave);
 		File[] fileListing = dir.listFiles();
-		for(File f:fileListing){
-			if(f.lastModified() > lastUpdateTime){
+		for (File f : fileListing) {
+			if (f.lastModified() > lastUpdateTime) {
 				listOfFiles.add(f.getName());
 			}
 		}
@@ -233,6 +248,7 @@ public class Node extends BasicServer {
 
 	private class UpdateTrackingServer extends Thread {
 		private long lastUpdateTime = 0;
+
 		@Override
 		public void run() {
 			try {
