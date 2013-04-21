@@ -1,6 +1,9 @@
 package org.umn.distributed.p2p.node;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -13,6 +16,7 @@ import org.umn.distributed.p2p.common.Machine;
 import org.umn.distributed.p2p.common.PeerMachine;
 import org.umn.distributed.p2p.common.SharedConstants;
 import org.umn.distributed.p2p.common.SharedConstants.FILES_UPDATE_MESSAGE_TYPE;
+import org.umn.distributed.p2p.common.SharedConstants.NODE_REQUEST_TO_NODE;
 import org.umn.distributed.p2p.common.TCPClient;
 import org.umn.distributed.p2p.common.TCPServer;
 import org.umn.distributed.p2p.common.Utils;
@@ -26,8 +30,12 @@ public class Node extends BasicServer {
 	private final AtomicInteger currentUploads = new AtomicInteger(0);
 	private final AtomicInteger currentDownloads = new AtomicInteger(0);
 	private int initDownloadQueueCapacity = 10;
+	private int initUploadQueueCapacity = 10;
 	private DownloadRetryPolicy downloadRetryPolicy = null;
 	private Machine myTrackingServer = null;
+	private String directoryToWatchAndSave = null;
+	private UpdateTrackingServer updateServerThread = new UpdateTrackingServer();
+	private Object updateThreadMonitorObj = new Object();
 	/**
 	 * A thread needs to monitor the unfinished status queue so that we can
 	 * report to the initiator the download status
@@ -36,7 +44,8 @@ public class Node extends BasicServer {
 
 	private Comparator<DownloadQueueObject> downloadPriorityAssignment = null;
 	private final DownloadService downloadService = new DownloadService(currentDownloads, downloadRetryPolicy,
-			downloadPriorityAssignment, initDownloadQueueCapacity);
+			downloadPriorityAssignment, initDownloadQueueCapacity, directoryToWatchAndSave, myInfo);
+	private final UploadService uploadService = new UploadService(currentUploads, initUploadQueueCapacity);
 
 	protected Node(int port, int numTreads, Machine trackingServer) {
 		super(port, numTreads);
@@ -49,23 +58,60 @@ public class Node extends BasicServer {
 	}
 
 	@Override
-	public void handleServerException(Exception e) {
+	public void handleServerException(Exception e, String commandRecieved) {
 		// TODO Auto-generated method stub
-
+		LoggingUtils.logError(logger, e, "Error on message=" + commandRecieved);
 	}
 
 	/**
 	 * <pre>
 	 * This method will handle all the request coming into the server
-	 * a) DOWNLOAD_FILE=<filename>|MACHINE=[M1] request to upload this file
-	 * b) GET_LOAD|MACHINE=[M1]
+	 * a) GET_LOAD|MACHINE=[M1]
 	 * Handle enum NODE_REQUEST_TO_NODE
 	 * </pre>
 	 */
 	@Override
-	protected byte[] handleSpecificRequest(String message) {
-		// TODO Auto-generated method stub
-		return null;
+	protected byte[] handleSpecificRequest(String request) {
+		if (!Utils.isEmpty(request)) {
+			logger.info("$$$$$$$$$$$$Message received at Node:" + request);
+			if (request.startsWith(NODE_REQUEST_TO_NODE.GET_LOAD.name())) {
+				int load = handleGetLoadMessage(request);
+				return Utils.stringToByte(SharedConstants.COMMAND_SUCCESS + "|" + load);
+			}
+		}
+
+		return Utils.stringToByte(SharedConstants.INVALID_COMMAND);
+
+	}
+
+	private int handleGetLoadMessage(String request) {
+		return currentDownloads.get() + currentUploads.get();
+	}
+
+	/**
+	 * DOWNLOAD_FILE=<filename>|MACHINE=[M1] request to upload this file
+	 */
+	protected void handleSpecificRequest(String request, OutputStream socketOutput) {
+		if (!Utils.isEmpty(request)) {
+			logger.info("$$$$$$$$$$$$Message received at Node in special handler:" + request);
+			if (request.startsWith(NODE_REQUEST_TO_NODE.DOWNLOAD_FILE.name())) {
+				handleUploadFileRequest(request, socketOutput);
+			}
+		}
+	}
+
+	/**
+	 * If the file is not found we should write command_failed in the output
+	 * stream
+	 * 
+	 * @param request
+	 * @param socketOutput
+	 */
+	private void handleUploadFileRequest(String request, OutputStream socketOutput) {
+		String[] requestArr = Utils.splitCommandIntoFragments(request);
+		String[] fileNameArr = Utils.getKeyAndValuefromFragment(requestArr[0]);
+		String[] destMachineArr = Utils.getKeyAndValuefromFragment(requestArr[1]);
+		UploadService.uploadFile(fileNameArr[1], destMachineArr[1], socketOutput);
 	}
 
 	/**
@@ -78,7 +124,7 @@ public class Node extends BasicServer {
 	 * @return
 	 * @throws IOException this means that the Tracking Sever is down. Need to act by blocking
 	 */
-	private List<Machine> findFileOnTracker(String fileName, List<PeerMachine> failedPeers) throws IOException {
+	public List<Machine> findFileOnTracker(String fileName, List<PeerMachine> failedPeers) throws IOException {
 		List<Machine> foundPeers = null;
 		StringBuilder findFileMessage = new StringBuilder(SharedConstants.NODE_REQUEST_TO_SERVER.FIND.name());
 		findFileMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(fileName);
@@ -102,7 +148,6 @@ public class Node extends BasicServer {
 			LoggingUtils.logError(logger, e, "Error in communicating with tracker server");
 			throw e;
 		}
-		// we will modify the variables sent to us
 		String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
 		// return expected as ""
 		String[] brokenOnCommandSeparator = awqStr.split(SharedConstants.COMMAND_PARAM_SEPARATOR);
@@ -111,29 +156,31 @@ public class Node extends BasicServer {
 		}
 		return foundPeers;
 	}
-	
+
 	/**
-	 * (FILE_LIST=<>|MACHINE=[M1])a Node comes with complete list of files.
+	 * (FILE_LIST=<[f1;]>|MACHINE=[M1])a Node comes with complete list of files.
+	 * this should also be called from the update the server periodically
+	 * 
 	 * @param fileName
 	 * @param failedPeers
 	 * @return
 	 * @throws IOException
 	 */
-	private boolean updateFileList(FILES_UPDATE_MESSAGE_TYPE updateType, List<String> filesToSend) throws IOException {
+	public boolean updateFileList(FILES_UPDATE_MESSAGE_TYPE updateType, List<String> filesToSend) throws IOException {
 		StringBuilder updateFileListMessage = new StringBuilder();
-		switch (updateType){
+		switch (updateType) {
 		case COMPLETE:
 			updateFileListMessage.append(SharedConstants.NODE_REQUEST_TO_SERVER.FILE_LIST.name());
 			break;
 		case ADDED:
 			updateFileListMessage.append(SharedConstants.NODE_REQUEST_TO_SERVER.ADDED_FILE_LIST.name());
 			break;
-		} 
+		}
 		/**
 		 * FILE_LIST=[f1;f2;f3]|MACHINE=[M1]
 		 */
 		StringBuilder fileListBuilder = new StringBuilder();
-		for(String file:filesToSend){
+		for (String file : filesToSend) {
 			fileListBuilder.append(file).append(SharedConstants.COMMAND_LIST_SEPARATOR);
 		}
 		updateFileListMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(fileListBuilder.toString());
@@ -155,22 +202,53 @@ public class Node extends BasicServer {
 		}
 		// we will modify the variables sent to us
 		String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
-		
+
 		String[] brokenOnCommandSeparator = awqStr.split(SharedConstants.COMMAND_PARAM_SEPARATOR);
 		return brokenOnCommandSeparator[0].equals(SharedConstants.COMMAND_SUCCESS);
-		
+
+	}
+
+	private List<String> getFilesFromTheWatchedDirectory(long lastUpdateTime) {
+		List<String> listOfFiles = new ArrayList<String>();
+		File dir = new File(directoryToWatchAndSave);
+		File[] fileListing = dir.listFiles();
+		for(File f:fileListing){
+			if(f.lastModified() > lastUpdateTime){
+				listOfFiles.add(f.getName());
+			}
+		}
+		return listOfFiles;
 	}
 
 	@Override
 	protected void stopSpecific() {
-		// TODO Auto-generated method stub
-
+		this.updateServerThread.interrupt();
 	}
 
 	@Override
 	protected void startSpecific() {
-		// TODO Auto-generated method stub
+		this.updateServerThread.start();
 
+	}
+
+	private class UpdateTrackingServer extends Thread {
+		private long lastUpdateTime = 0;
+		@Override
+		public void run() {
+			try {
+				while (true) {
+					synchronized (updateThreadMonitorObj) {
+						updateThreadMonitorObj.wait(NodeProps.HEARTBEAT_INTERVAL);
+					}
+					// after wait or notify
+					updateFileList(FILES_UPDATE_MESSAGE_TYPE.COMPLETE, getFilesFromTheWatchedDirectory(lastUpdateTime));
+					lastUpdateTime = System.currentTimeMillis();
+				}
+			} catch (Exception e) {
+				logger.error("Error in the update server thread", e);
+			}
+
+		}
 	}
 
 }

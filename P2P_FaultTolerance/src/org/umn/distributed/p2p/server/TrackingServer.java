@@ -35,7 +35,6 @@ public class TrackingServer extends BasicServer {
 		super(port, numTreads);
 	}
 
-	
 	protected boolean addFile(String fileName, Machine machine) {
 		writeL.lock();
 		try {
@@ -92,7 +91,8 @@ public class TrackingServer extends BasicServer {
 	}
 
 	@Override
-	public void handleServerException(Exception e) {
+	public void handleServerException(Exception e, String commandReceived) {
+
 		// TODO Auto-generated method stub
 		/**
 		 * Here we do not need to handle any major things, so we can just log an
@@ -115,10 +115,7 @@ public class TrackingServer extends BasicServer {
 	@Override
 	protected byte[] handleSpecificRequest(String request) {
 		if (!Utils.isEmpty(request)) {
-			String[] reqBrokenOnCommandParamSeparator = request.split(SharedConstants.COMMAND_PARAM_SEPARATOR_REGEX,
-					SharedConstants.NO_LIMIT_SPLIT);
-			logger.info("$$$$$$$$$$$$Message received at Tracking Server:"
-					+ Arrays.toString(reqBrokenOnCommandParamSeparator));
+			logger.info("$$$$$$$$$$$$Message received at Tracking Server:" + request);
 			if (request.startsWith(NODE_REQUEST_TO_SERVER.FILE_LIST.name())) {
 				handleFileUpdateMessage(request);
 				return Utils.stringToByte(SharedConstants.COMMAND_SUCCESS);
@@ -134,31 +131,27 @@ public class TrackingServer extends BasicServer {
 
 	}
 
-
 	private String handleFindFileRequest(String request) {
 		/**
-		 * (FIND=<filename>|FAILED_SERVERS=[M1][M2]) Need to find all
-		 * the peers serving this file
+		 * (FIND=<filename>|FAILED_SERVERS=[M1][M2]) Need to find all the peers
+		 * serving this file
 		 */
 		String[] commandFragments = Utils.splitCommandIntoFragments(request);
 		// TODO validation here
 		String[] filesFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[0]);
-		String[] failedPeerList = Utils.getKeyAndValuefromFragment(commandFragments[1],
-				SharedConstants.NO_LIMIT_SPLIT);
+		String[] failedPeerList = Utils.getKeyAndValuefromFragment(commandFragments[1], SharedConstants.NO_LIMIT_SPLIT);
 
 		String peers = findPeersForFile(filesFromCommandFrag[1], failedPeerList[1]);
 		return peers;
 	}
 
-
 	private void handleFileUpdateMessage(String request) {
 		/**
-		 * (FILE_LIST=[f1;f2;f3]|MACHINE=[M1]) Need to add all the files
-		 * from this server to the fileMap
+		 * (FILE_LIST=[f1;f2;f3]|MACHINE=[M1]) Need to add all the files from
+		 * this server to the fileMap
 		 */
 		String[] commandFragments = Utils.splitCommandIntoFragments(request);
-		LoggingUtils.logDebug(logger, "request=%s;;commandFragments=%s;", request,
-				Arrays.toString(commandFragments));
+		LoggingUtils.logDebug(logger, "request=%s;;commandFragments=%s;", request, Arrays.toString(commandFragments));
 		// TODO validation here
 		String[] filesFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[0]);
 		String[] machineFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[1]);
@@ -342,13 +335,12 @@ public class TrackingServer extends BasicServer {
 	@Override
 	protected void stopSpecific() {
 		// TODO Auto-generated method stub
-		
-	}
 
+	}
 
 	@Override
 	protected void startSpecific() {
 		// TODO Auto-generated method stub
-		
+
 	}
 }

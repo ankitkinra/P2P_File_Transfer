@@ -1,6 +1,7 @@
 package org.umn.distributed.p2p.common;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 import org.apache.log4j.Logger;
 
@@ -44,6 +45,21 @@ public abstract class BasicServer implements TcpServerDelegate {
 					+ e.getMessage());
 		}
 
+	}
+	
+	@Override
+	public void handleRequest(byte[] request, OutputStream socketOutput) {
+		try {
+			String req = Utils.byteToString(request);
+			handleSpecificRequest(req, socketOutput);
+		} catch (Exception e) {
+			logger.error("Exception handling request in Tracking Server", e);
+		}
+		
+	}
+
+	protected void handleSpecificRequest(String req, OutputStream socketOutput){
+		//Empty declaration
 	}
 
 	protected abstract byte[] handleSpecificRequest(String message);

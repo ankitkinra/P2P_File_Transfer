@@ -40,7 +40,7 @@ public class PeerMachine extends Machine {
 	double latencyWeight = 0.01;
 	double currentLoadWeight = 0.1;
 
-	final Comparator<PeerMachine> peerSelectionPolicy = new Comparator<PeerMachine>() {
+	public static final Comparator<PeerMachine> PEER_SELECTION_POLICY = new Comparator<PeerMachine>() {
 		/**
 		 * lesser the weight, better the peer
 		 */
@@ -52,7 +52,8 @@ public class PeerMachine extends Machine {
 		}
 
 		private double getPeerWeight(PeerMachine machine) {
-			return machine.getCurrentLoad() * currentLoadWeight + machine.getLatencyMillis() * latencyMillis;
+			return machine.getCurrentLoad() * machine.currentLoadWeight + machine.getLatencyMillis()
+					* machine.latencyMillis;
 		}
 	};
 
