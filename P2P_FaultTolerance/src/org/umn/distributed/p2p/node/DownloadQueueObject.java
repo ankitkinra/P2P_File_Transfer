@@ -13,6 +13,8 @@ import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.swing.plaf.basic.BasicInternalFrameTitlePane.MaximizeAction;
+
 import org.apache.log4j.Logger;
 import org.umn.distributed.p2p.common.LoggingUtils;
 import org.umn.distributed.p2p.common.Machine;
@@ -104,12 +106,15 @@ public class DownloadQueueObject implements Runnable {
 				downloadFileFromPeer(this.fileToDownload, m);
 			}
 			if (downloadActivityStatus.equals(DOWNLOAD_ACTIVITY.DONE)) {
+				LoggingUtils.logInfo(logger, "file=%s downloaded correctly.", this.fileToDownload);
 				break;
 			}
 		}
 		// file is not downloaded yet, declare failed
 		if (downloadActivityStatus != DOWNLOAD_ACTIVITY.DONE) {
+			LoggingUtils.logInfo(logger, "file=%s cannot be downloaded. The system might retry", this.fileToDownload);
 			downloadActivityStatus = DOWNLOAD_ACTIVITY.FAILED;
+			failedTaskQRef.add(this); // adding to the retry queue.
 		}
 	}
 
@@ -131,21 +136,39 @@ public class DownloadQueueObject implements Runnable {
 		 */
 		byte[] fileDownloaded = null;
 		try {
-			TCPClient.sendDataGetFile(m, Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING),
-					this.nodeSpecificOutputFolder + this.fileToDownload);
-			if (verifyFile(fileDownloaded)) {
-				// writeFileToFolder(fileDownloaded, this.fileToDownload);
-				downloadActivityStatus = DOWNLOAD_ACTIVITY.DONE;
-			} else {
-				//TODO delete the bad file
-				deleteFile(this.nodeSpecificOutputFolder + this.fileToDownload);
-				failedTaskQRef.add(this);
-				downloadErrorMap.put(DOWNLOAD_ERRORS.FILE_CORRUPT,
-						downloadErrorMap.get(DOWNLOAD_ERRORS.FILE_CORRUPT) + 1);
-				LoggingUtils.logInfo(logger,
-						"file = %s failed transfer, as data corrupt.Task added to retry queue; downloadErrorMap=%s",
-						this.fileToDownload, downloadErrorMap);
+			int counter = 0;
+			while (true) {
+				counter++;
+				TCPClient.sendDataGetFile(m, Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING),
+						this.nodeSpecificOutputFolder + this.fileToDownload);
+				if (verifyFile(fileDownloaded)) {
+					// if correct stop and finish
+					downloadActivityStatus = DOWNLOAD_ACTIVITY.DONE;
+					LoggingUtils.logDebug(logger, "Downloaded file =%s from the peer=%s correctly", fileToDownload2, m);
+					break;
+				} else {
+					// increment the error count
+					deleteFile(this.nodeSpecificOutputFolder + this.fileToDownload);
+					downloadErrorMap.put(DOWNLOAD_ERRORS.FILE_CORRUPT,
+							downloadErrorMap.get(DOWNLOAD_ERRORS.FILE_CORRUPT) + 1);
+					LoggingUtils
+							.logInfo(
+									logger,
+									"file = %s failed transfer, as data corrupt.; downloadErrorMap=%s",
+									this.fileToDownload, downloadErrorMap);
+				}
+				if (counter >= NodeProps.MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE) {
+					LoggingUtils
+							.logInfo(
+									logger,
+									"file = %s failed transfer more than %s on the peer = %s, cannot retry, will add peer to failed list",
+									this.fileToDownload, NodeProps.MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE, m);
+					failedMachines.add(m);
+					break;
+				}
+
 			}
+
 		} catch (IOException e) {
 			// if connection breaks, this means that this peer is down
 			LoggingUtils.logError(logger, e, "Error in communicating with peer = " + m);
@@ -155,7 +178,6 @@ public class DownloadQueueObject implements Runnable {
 			LoggingUtils.logInfo(logger, "peer download status= %s;downloadErrorMap=%s", this.peerDownloadStatus,
 					this.downloadErrorMap);
 			failedMachines.add(m);
-			failedTaskQRef.add(this);
 		} finally {
 			this.activeDownloadCount.decrementAndGet();
 		}
@@ -170,7 +192,7 @@ public class DownloadQueueObject implements Runnable {
 
 	private boolean verifyFile(byte[] fileDownloaded) {
 		int number = r.nextInt(100);
-		return number < 4; // reducing file fail probability
+		return number < 0; // reducing file fail probability
 	}
 
 	private void writeFileToFolder(byte[] fileDownloaded, String fileName) {
