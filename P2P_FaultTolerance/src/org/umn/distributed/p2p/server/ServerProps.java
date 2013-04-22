@@ -28,7 +28,7 @@ public class ServerProps {
 
 	public static int NETWORK_TIMEOUT;
 
-	public static int maxPseudoNetworkDelay;
+	public static int maxPseudoNetworkDelay = 1000;
 	public static String logFilePath = "log4j.properties";
 
 	public static void loadProperties(String propertyFile) {

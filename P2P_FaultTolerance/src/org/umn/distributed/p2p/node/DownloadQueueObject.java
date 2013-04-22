@@ -1,9 +1,9 @@
 package org.umn.distributed.p2p.node;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -48,8 +48,6 @@ public class DownloadQueueObject implements Runnable {
 	public EnumMap<DOWNLOAD_ERRORS, Integer> getDownloadErrorMap() {
 		return downloadErrorMap;
 	}
-	
-	
 
 	/**
 	 * 1) task is to determine from which peer should we start downloading 1 a)
@@ -59,8 +57,8 @@ public class DownloadQueueObject implements Runnable {
 	 * 
 	 * @param activeDownloadCount
 	 */
-	public DownloadQueueObject(String fileToDownload, Map<PeerMachine, DOWNLOAD_ACTIVITY> mapPeerMachineDownloadStatus, Machine myMachineInfo,
-			Queue<DownloadQueueObject> failedTaskQueue, String nodeSpecificOutputFolder,
+	public DownloadQueueObject(String fileToDownload, Map<PeerMachine, DOWNLOAD_ACTIVITY> mapPeerMachineDownloadStatus,
+			Machine myMachineInfo, Queue<DownloadQueueObject> failedTaskQueue, String nodeSpecificOutputFolder,
 			AtomicInteger activeDownloadCount) {
 		this.fileToDownload = fileToDownload;
 		this.peersToDownloadFrom = convertToList(mapPeerMachineDownloadStatus);
@@ -99,10 +97,14 @@ public class DownloadQueueObject implements Runnable {
 	 * 2. if we run into an error we need to insert this task back in failedTaskQRef
 	 */
 	public void run() {
+		LoggingUtils.logInfo(logger, "starting download of file=%s", this.fileToDownload);
 		downloadActivityStatus = DOWNLOAD_ACTIVITY.STARTED;
 		for (PeerMachine m : this.peersToDownloadFrom) {
 			if (!this.failedMachines.contains(m)) {
 				downloadFileFromPeer(this.fileToDownload, m);
+			}
+			if (downloadActivityStatus.equals(DOWNLOAD_ACTIVITY.DONE)) {
+				break;
 			}
 		}
 		// file is not downloaded yet, declare failed
@@ -112,12 +114,13 @@ public class DownloadQueueObject implements Runnable {
 	}
 
 	private void downloadFileFromPeer(String fileToDownload2, PeerMachine m) {
+		LoggingUtils.logInfo(logger, "starting download of file=%s from peer = %s", this.fileToDownload, m);
 		this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.STARTED);
 		int activeCount = this.activeDownloadCount.addAndGet(1);
 		LoggingUtils.logDebug(logger,
 				"Starting the download on the peer = %s for the file =%s and the activeDownloadCount = %s", m,
 				fileToDownload2, activeCount);
-		
+
 		StringBuilder downloadFileMessage = new StringBuilder(SharedConstants.NODE_REQUEST_TO_NODE.DOWNLOAD_FILE.name());
 		downloadFileMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(fileToDownload2);
 		downloadFileMessage.append(SharedConstants.COMMAND_PARAM_SEPARATOR).append("MACHINE")
@@ -128,33 +131,46 @@ public class DownloadQueueObject implements Runnable {
 		 */
 		byte[] fileDownloaded = null;
 		try {
-			fileDownloaded = TCPClient.sendData(m,
-					Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING));
-
+			TCPClient.sendDataGetFile(m, Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING),
+					this.nodeSpecificOutputFolder + this.fileToDownload);
 			if (verifyFile(fileDownloaded)) {
-				writeFileToFolder(fileDownloaded, this.fileToDownload);
+				// writeFileToFolder(fileDownloaded, this.fileToDownload);
 				downloadActivityStatus = DOWNLOAD_ACTIVITY.DONE;
 			} else {
-				logger.info("failed transfer, data corrupt");
+				//TODO delete the bad file
+				deleteFile(this.nodeSpecificOutputFolder + this.fileToDownload);
 				failedTaskQRef.add(this);
 				downloadErrorMap.put(DOWNLOAD_ERRORS.FILE_CORRUPT,
 						downloadErrorMap.get(DOWNLOAD_ERRORS.FILE_CORRUPT) + 1);
+				LoggingUtils.logInfo(logger,
+						"file = %s failed transfer, as data corrupt.Task added to retry queue; downloadErrorMap=%s",
+						this.fileToDownload, downloadErrorMap);
 			}
 		} catch (IOException e) {
 			// if connection breaks, this means that this peer is down
-			LoggingUtils.logError(logger, e, "Error in communicating with tracker server");
+			LoggingUtils.logError(logger, e, "Error in communicating with peer = " + m);
 			downloadErrorMap.put(DOWNLOAD_ERRORS.PEER_UNREACHABLE,
 					downloadErrorMap.get(DOWNLOAD_ERRORS.PEER_UNREACHABLE) + 1);
 			this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.FAILED);
+			LoggingUtils.logInfo(logger, "peer download status= %s;downloadErrorMap=%s", this.peerDownloadStatus,
+					this.downloadErrorMap);
 			failedMachines.add(m);
 			failedTaskQRef.add(this);
+		} finally {
+			this.activeDownloadCount.decrementAndGet();
 		}
 
 	}
 
+	private void deleteFile(String fileName) {
+		LoggingUtils.logInfo(logger, "Deleting file =%s as it is bad", fileName);
+		File f = new File(fileName);
+		f.delete();
+	}
+
 	private boolean verifyFile(byte[] fileDownloaded) {
 		int number = r.nextInt(100);
-		return number < 90; // reducing file fail probability
+		return number < 4; // reducing file fail probability
 	}
 
 	private void writeFileToFolder(byte[] fileDownloaded, String fileName) {
@@ -174,4 +190,32 @@ public class DownloadQueueObject implements Runnable {
 		}
 
 	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("DownloadQueueObject [myMachineInfo=");
+		builder.append(myMachineInfo);
+		builder.append(", fileToDownload=");
+		builder.append(fileToDownload);
+		builder.append(", peersToDownloadFrom=");
+		builder.append(peersToDownloadFrom);
+		builder.append(", downloadActivityStatus=");
+		builder.append(downloadActivityStatus);
+		builder.append(", downloadErrorMap=");
+		builder.append(downloadErrorMap);
+		builder.append(", failedTaskQRef=");
+		builder.append(failedTaskQRef);
+		builder.append(", nodeSpecificOutputFolder=");
+		builder.append(nodeSpecificOutputFolder);
+		builder.append(", activeDownloadCount=");
+		builder.append(activeDownloadCount);
+		builder.append(", peerDownloadStatus=");
+		builder.append(peerDownloadStatus);
+		builder.append(", failedMachines=");
+		builder.append(failedMachines);
+		builder.append("]");
+		return builder.toString();
+	}
+
 }

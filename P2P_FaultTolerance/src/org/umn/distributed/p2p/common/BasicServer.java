@@ -2,6 +2,7 @@ package org.umn.distributed.p2p.common;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashSet;
 
 import org.apache.log4j.Logger;
 
@@ -11,16 +12,20 @@ public abstract class BasicServer implements TcpServerDelegate {
 	protected int port;
 	protected Machine myInfo;
 
-	public BasicServer(int port, int numTreads) {
+	public BasicServer(int port, int numTreads, HashSet<String> commandsWhoHandleTheirOutput) {
 		this.port = port;
-		this.tcpServer = new TCPServer(this, numTreads);
+		this.tcpServer = new TCPServer(this, numTreads, commandsWhoHandleTheirOutput);
+		myInfo = new Machine(Utils.getLocalServerIp(), this.port);
+	}
+	public BasicServer(int port, int numTreads) {
+		this(port, numTreads, null);
 	}
 
 	public void start() throws Exception {
 		logger.info("****************Starting Tracking Server****************");
 		try {
 			this.port = this.tcpServer.startListening(this.port);
-			myInfo = new Machine(Utils.getLocalServerIp(), this.port);
+			LoggingUtils.logInfo(logger, "Started server, myInfo=%s", myInfo);
 			startSpecific();
 		} catch (IOException ioe) {
 			logger.error("Error starting tcp server. Stopping now", ioe);

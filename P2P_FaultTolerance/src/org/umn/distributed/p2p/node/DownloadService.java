@@ -7,6 +7,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.log4j.Logger;
+import org.umn.distributed.p2p.common.LoggingUtils;
 import org.umn.distributed.p2p.common.Machine;
 
 /**
@@ -18,6 +20,7 @@ import org.umn.distributed.p2p.common.Machine;
  * 
  */
 public class DownloadService {
+	private Logger log = Logger.getLogger(getClass());
 	private ExecutorService service;
 	private Queue<DownloadQueueObject> failedTaskQ = new LinkedList<DownloadQueueObject>();
 	private String outputFolder = null;
@@ -38,6 +41,7 @@ public class DownloadService {
 		this.myMachineInfo = myMachine;
 		this.downloadRetryPolicy = downloadRetryPolicy;
 		this.activeDownloadCount = activeDownloadCount;
+		this.failedQMonitor = new FailureQueueMonitor();
 	}
 
 	public void start() {
@@ -46,6 +50,7 @@ public class DownloadService {
 
 	public void stop() {
 		try {
+			this.failedQMonitor.isCancelled = true;
 			this.failedQMonitor.interrupt();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -94,6 +99,8 @@ public class DownloadService {
 						DownloadQueueObject taskToRetry = failedTaskQ.poll();
 						if (downloadRetryPolicy.shouldRetry(taskToRetry)) {
 							service.execute(taskToRetry);
+						} else {
+							LoggingUtils.logInfo(log, "not retrying the task=%s", taskToRetry);
 						}
 					}
 				}

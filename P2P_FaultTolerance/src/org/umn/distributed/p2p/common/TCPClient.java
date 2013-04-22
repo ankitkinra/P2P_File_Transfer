@@ -1,6 +1,7 @@
 package org.umn.distributed.p2p.common;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
@@ -22,12 +23,13 @@ public class TCPClient {
 		if (maxDelay < 1) {
 			maxDelay = ClientProps.maxPseudoNetworkDelay;
 		}
-		long delay = randomDelay.nextInt(maxDelay);
-		try {
-			Thread.sleep(delay);
-		} catch (InterruptedException e) {
-			LoggingUtils.logError(logger, e, "Error while waiting by thread = %s", Thread.currentThread().getName());
-		}
+		/*
+		 * long delay = randomDelay.nextInt(maxDelay); try {
+		 * Thread.sleep(delay); } catch (InterruptedException e) {
+		 * LoggingUtils.logError(logger, e,
+		 * "Error while waiting by thread = %s",
+		 * Thread.currentThread().getName()); }
+		 */
 		/**
 		 * This will open a local socket and send the data to the remoteMachine
 		 */
@@ -36,6 +38,7 @@ public class TCPClient {
 		int count = 0;
 		InputStream is = null;
 		byte[] buffer = new byte[buffSize];
+		byte[] outputBuffer = null;
 		try {
 			clientSocket = new Socket(remoteMachine.getIP(), remoteMachine.getPort());
 			// TODO: add a timeout here to handle the writer thread waiting in
@@ -47,9 +50,9 @@ public class TCPClient {
 
 			while ((count = is.read(buffer)) > -1) {
 				bos.write(buffer, 0, count);
+				bos.flush();
 			}
-			bos.flush();
-			buffer = bos.toByteArray();
+			outputBuffer = bos.toByteArray();
 			bos.close();
 		} catch (IOException ioe) {
 			logger.error("Error connecting to " + remoteMachine, ioe);
@@ -66,6 +69,57 @@ public class TCPClient {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Data received at client " + Utils.byteToString(buffer));
 		}
-		return buffer;
+		return outputBuffer;
+	}
+
+	public static void sendDataGetFile(Machine remoteMachine, byte[] data, String fileWriteLocation)
+			throws IOException {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Send " + Utils.byteToString(data) + " to " + remoteMachine);
+		}
+		// Adding a random delay
+		int maxDelay = ServerProps.maxPseudoNetworkDelay;
+		if (maxDelay < 1) {
+			maxDelay = ClientProps.maxPseudoNetworkDelay;
+		}
+		/*
+		 * long delay = randomDelay.nextInt(maxDelay); try {
+		 * Thread.sleep(delay); } catch (InterruptedException e) {
+		 * LoggingUtils.logError(logger, e,
+		 * "Error while waiting by thread = %s",
+		 * Thread.currentThread().getName()); }
+		 */
+		/**
+		 * This will open a local socket and send the data to the remoteMachine
+		 */
+		Socket clientSocket = null;
+		int buffSize = 1024;
+		int count = 0;
+		InputStream is = null;
+		byte[] buffer = new byte[buffSize];
+		clientSocket = new Socket(remoteMachine.getIP(), remoteMachine.getPort());
+		// TODO: add a timeout here to handle the writer thread waiting in
+		// the execution
+		clientSocket.getOutputStream().write(data);
+		clientSocket.getOutputStream().flush();
+		FileOutputStream fos = null;
+
+		
+		try {
+			is = clientSocket.getInputStream();
+			fos = new FileOutputStream(fileWriteLocation);
+			count = 0;
+			while ((count = is.read(buffer)) >= 0) {
+				fos.write(buffer, 0, count);
+			}
+		} catch (IOException ioe) {
+			logger.error("Error connecting to " + remoteMachine, ioe);
+			throw ioe;
+		} finally {
+			fos.close();
+			is.close();
+			clientSocket.close();
+		}
+		
 	}
 }

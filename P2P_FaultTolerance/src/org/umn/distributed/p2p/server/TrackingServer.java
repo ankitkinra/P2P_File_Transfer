@@ -147,7 +147,7 @@ public class TrackingServer extends BasicServer {
 		 * this server to the fileMap
 		 */
 		String[] commandFragments = Utils.splitCommandIntoFragments(request);
-		LoggingUtils.logDebug(logger, "request=%s;;commandFragments=%s;", request, Arrays.toString(commandFragments));
+		LoggingUtils.logInfo(logger, "request=%s;;commandFragments=%s;", request, Arrays.toString(commandFragments));
 		// TODO validation here
 		String[] filesFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[0]);
 		String[] machineFromCommandFrag = Utils.getKeyAndValuefromFragment(commandFragments[1]);
@@ -203,11 +203,25 @@ public class TrackingServer extends BasicServer {
 		 * 
 		 */
 		String realFileList = allFileList.substring(1, allFileList.length() - 1);
-		LoggingUtils.logDebug(logger, "Real File List after prefix removal=>>%s<<", realFileList);
+		LoggingUtils.logInfo(logger, "Real File List after prefix removal=>>%s<<", realFileList);
 		String[] files = Utils.getStringSplitToArr(realFileList, SharedConstants.COMMAND_LIST_SEPARATOR);
 		for (String file : files) {
 			addFile(file, sendNode);
 		}
+		displayFileServerMap();
+	}
+
+	private void displayFileServerMap() {
+		displayFileServerMap(false);
+	}
+	private void displayFileServerMap(boolean displayToSystemOut) {
+		readL.lock();
+		try{
+			logger.info(this.filesServersMap);
+		}finally{
+			readL.unlock();
+		}
+		
 	}
 
 	private static void showUsage() {
@@ -256,6 +270,8 @@ public class TrackingServer extends BasicServer {
 					ts.start();
 				} catch (Exception e) {
 					e.printStackTrace();
+					System.out.println("Exiting");
+					System.exit(1);
 				}
 
 			}
@@ -298,7 +314,7 @@ public class TrackingServer extends BasicServer {
 			request = sb.toString();
 			System.out.println("Node request = " + request);
 			byte[] responseBytes = ts.handleSpecificRequest(request);
-			System.out.println("filesServersMap=" + ts.filesServersMap);
+			ts.displayFileServerMap(true);
 			System.out.println(Utils.byteToString(responseBytes));
 		}
 	}
@@ -315,15 +331,20 @@ public class TrackingServer extends BasicServer {
 		String requestFormat = "FIND=%s|FAILED_SERVERS=%s";
 		String finalRequest = null;
 		StringBuilder failedPeer = null;
-		for (Entry<String, HashSet<Machine>> entry : ts.filesServersMap.entrySet()) {
-			failedPeer = new StringBuilder();
-			for (Machine m : entry.getValue()) {
-				failedPeer.append(m.toString());
-				break;
+		ts.readL.lock();
+		try {
+			for (Entry<String, HashSet<Machine>> entry : ts.filesServersMap.entrySet()) {
+				failedPeer = new StringBuilder();
+				for (Machine m : entry.getValue()) {
+					failedPeer.append(m.toString());
+					break;
+				}
+				finalRequest = String.format(requestFormat, entry.getKey(), failedPeer.toString());
+				byte[] result = ts.handleSpecificRequest(finalRequest);
+				System.out.println("result of find=" + Utils.byteToString(result) + " entrySet=" + entry.getValue());
 			}
-			finalRequest = String.format(requestFormat, entry.getKey(), failedPeer.toString());
-			byte[] result = ts.handleSpecificRequest(finalRequest);
-			System.out.println("result of find=" + Utils.byteToString(result) + " entrySet=" + entry.getValue());
+		} finally {
+			ts.readL.unlock();
 		}
 
 	}

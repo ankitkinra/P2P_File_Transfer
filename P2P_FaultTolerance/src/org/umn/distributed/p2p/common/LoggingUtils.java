@@ -17,7 +17,7 @@ public class LoggingUtils {
 	private static Logger logger;
 	static {
 		System.out.println("Intializing log4j");
-		String LOG_FILE = ServerProps.logFilePath;
+		/*String LOG_FILE = ServerProps.logFilePath;
 		if (ServerProps.logFilePath == null) {
 			LOG_FILE = ClientProps.logFilePath;
 		}
@@ -31,7 +31,7 @@ public class LoggingUtils {
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.out.println("Logging not enabled");
-		}
+		}*/
 	}
 
 	public static void testLog(String string) {
