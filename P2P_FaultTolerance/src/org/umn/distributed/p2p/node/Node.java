@@ -82,7 +82,8 @@ public class Node extends BasicServer {
 			logger.info("$$$$$$$$$$$$Message received at Node:" + request);
 			if (request.startsWith(NODE_REQUEST_TO_NODE.GET_LOAD.name())) {
 				int load = handleGetLoadMessage(request);
-				return Utils.stringToByte(SharedConstants.COMMAND_SUCCESS + "|" + load);
+				return Utils.stringToByte(SharedConstants.COMMAND_SUCCESS + SharedConstants.COMMAND_PARAM_SEPARATOR
+						+ load);
 			}
 		}
 		return Utils.stringToByte(SharedConstants.INVALID_COMMAND);
@@ -135,15 +136,15 @@ public class Node extends BasicServer {
 					int number = 0;
 					LoggingUtils.logInfo(logger, "file = %s to peer =%s;fileToSend = %s", fileName, machineToSend,
 							fileToSend.length());
-					
+
 					while ((number = fileInputStream.read(buffer)) != -1) {
 						socketOutput.write(buffer, 0, number);
 						socketOutput.flush();
-						
+
 					}
 				} catch (FileNotFoundException e) {
-					LoggingUtils.logError(logger, e, "File=%s not found and sending error to the peer=%s",
-							fileName, machineToSend);
+					LoggingUtils.logError(logger, e, "File=%s not found and sending error to the peer=%s", fileName,
+							machineToSend);
 					try {
 						socketOutput.write(Utils.stringToByte(SharedConstants.COMMAND_FAILED));
 					} catch (IOException e1) {
@@ -207,6 +208,42 @@ public class Node extends BasicServer {
 			foundPeers = Machine.parseList(brokenOnCommandSeparator[1]);
 		}
 		return foundPeers;
+	}
+
+	/**
+	 * <pre>
+	 * GET_LOAD|MACHINE=[M1]
+	 * ReturnMessage = SUCCESS|<loadInt>
+	 * 
+	 * @throws IOException this means that the Tracking Sever is down. Need to act by blocking
+	 */
+	public int getLoadFromPeer(Machine peer) throws IOException {
+		int load = Integer.MAX_VALUE;
+		StringBuilder getLoadMessage = new StringBuilder(SharedConstants.NODE_REQUEST_TO_NODE.GET_LOAD.name());
+		getLoadMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append("MACHINE")
+				.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(this.myInfo);
+
+		/**
+		 * TODO if the server fails this will break and then we need to block on
+		 * this
+		 */
+		byte[] awqReturn = null;
+		try {
+			awqReturn = TCPClient.sendData(myTrackingServer,
+					Utils.stringToByte(getLoadMessage.toString(), NodeProps.ENCODING));
+		} catch (IOException e) {
+			// if connection breaks, it means we need to block on the tracking
+			// server
+			LoggingUtils.logError(logger, e, "Error in communicating with peer =%s while asking for load", peer);
+
+		}
+		String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
+		// return expected as ""
+		String[] brokenOnCommandSeparator = Utils.splitCommandIntoFragments(awqStr);
+		if (brokenOnCommandSeparator[0].startsWith(SharedConstants.COMMAND_SUCCESS)) {
+			load = Integer.parseInt(brokenOnCommandSeparator[1]);
+		}
+		return load;
 	}
 
 	/**
@@ -346,9 +383,20 @@ public class Node extends BasicServer {
 	private List<PeerMachine> getPeerMachineList(List<Machine> machinesWithFile) {
 		List<PeerMachine> peers = new LinkedList<PeerMachine>();
 		for (Machine m : machinesWithFile) {
-			peers.add(new PeerMachine(m.getIP(), m.getPort(), 100, 5));
+			//TODO get the load from all the peers.
+			//TODO create and load the latency pairs and populate it here
+			try {
+				peers.add(new PeerMachine(m.getIP(), m.getPort(), getLatency(m), getLoadFromPeer(m)));
+			} catch (IOException e) {
+				LoggingUtils.logError(logger, e, "Did not add peer = %s as it did not return load", m);
+			}
 		}
 		return peers;
+	}
+
+	private long getLatency(Machine m) {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 	private static String getDirToWatch(int myPort) {
