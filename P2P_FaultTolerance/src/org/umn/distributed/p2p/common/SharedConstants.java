@@ -16,7 +16,7 @@ public class SharedConstants {
 	public static final String COMMAND_LIST_END = "]";
 
 	public static enum NODE_REQUEST_TO_SERVER {
-		FILE_LIST, ADDED_FILE_LIST, FIND;
+		FILE_LIST, ADDED_FILE_LIST, FIND, FAILED_PEERS;
 	};
 	
 	public static enum NODE_REQUEST_TO_NODE {

@@ -74,4 +74,22 @@ public class DownloadStatus {
 		}
 	};
 
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("DownloadStatus [downloadId=");
+		builder.append(downloadId);
+		builder.append(", fileToDownload=");
+		builder.append(fileToDownload);
+		builder.append(", peersToDownloadFrom=");
+		builder.append(peersToDownloadFrom);
+		builder.append(", downloadActivityStatus=");
+		builder.append(downloadActivityStatus);
+		builder.append(", cancelled=");
+		builder.append(cancelled);
+		builder.append("]");
+		return builder.toString();
+	}
+	
+
 }

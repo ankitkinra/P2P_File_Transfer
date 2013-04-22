@@ -6,6 +6,6 @@ public class Constants {
 	};
 
 	public enum DOWNLOAD_ACTIVITY {
-		NOT_STARTED, STARTED, DONE, FAILED
+		NOT_STARTED, STARTED, DONE, FAILED, PEER_UNREACHABLE
 	};
 }

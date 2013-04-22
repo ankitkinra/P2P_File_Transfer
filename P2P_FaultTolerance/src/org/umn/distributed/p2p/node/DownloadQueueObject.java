@@ -13,8 +13,6 @@ import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.swing.plaf.basic.BasicInternalFrameTitlePane.MaximizeAction;
-
 import org.apache.log4j.Logger;
 import org.umn.distributed.p2p.common.LoggingUtils;
 import org.umn.distributed.p2p.common.Machine;
@@ -38,6 +36,7 @@ public class DownloadQueueObject implements Runnable {
 	private Random r = new Random();
 	private AtomicInteger activeDownloadCount;
 	private Map<PeerMachine, DOWNLOAD_ACTIVITY> peerDownloadStatus;
+	private Object updateThreadMonitorObj;
 
 	public String getFileToDownload() {
 		return fileToDownload;
@@ -61,7 +60,7 @@ public class DownloadQueueObject implements Runnable {
 	 */
 	public DownloadQueueObject(String fileToDownload, Map<PeerMachine, DOWNLOAD_ACTIVITY> mapPeerMachineDownloadStatus,
 			Machine myMachineInfo, Queue<DownloadQueueObject> failedTaskQueue, String nodeSpecificOutputFolder,
-			AtomicInteger activeDownloadCount) {
+			AtomicInteger activeDownloadCount, Object updateThreadMonitorObj) {
 		this.fileToDownload = fileToDownload;
 		this.peersToDownloadFrom = convertToList(mapPeerMachineDownloadStatus);
 		this.peerDownloadStatus = mapPeerMachineDownloadStatus;
@@ -70,6 +69,7 @@ public class DownloadQueueObject implements Runnable {
 		this.nodeSpecificOutputFolder = nodeSpecificOutputFolder;
 		Collections.sort(this.peersToDownloadFrom, PeerMachine.PEER_SELECTION_POLICY);
 		this.activeDownloadCount = activeDownloadCount;
+		this.updateThreadMonitorObj = updateThreadMonitorObj;
 
 		downloadErrorMap.put(DOWNLOAD_ERRORS.FILE_CORRUPT, 0);
 		downloadErrorMap.put(DOWNLOAD_ERRORS.OTHER, 0);
@@ -106,6 +106,9 @@ public class DownloadQueueObject implements Runnable {
 				downloadFileFromPeer(this.fileToDownload, m);
 			}
 			if (downloadActivityStatus.equals(DOWNLOAD_ACTIVITY.DONE)) {
+				synchronized (this.updateThreadMonitorObj) {
+					this.updateThreadMonitorObj.notifyAll();
+				}
 				LoggingUtils.logInfo(logger, "file=%s downloaded correctly.", this.fileToDownload);
 				break;
 			}
@@ -163,7 +166,8 @@ public class DownloadQueueObject implements Runnable {
 									logger,
 									"file = %s failed transfer more than %s on the peer = %s, cannot retry, will add peer to failed list",
 									this.fileToDownload, NodeProps.MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE, m);
-					failedMachines.add(m);
+					this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.FAILED);
+					//failedMachines.add(m); // Not adding the corrupted download to the failed list, just move on
 					break;
 				}
 
@@ -174,7 +178,7 @@ public class DownloadQueueObject implements Runnable {
 			LoggingUtils.logError(logger, e, "Error in communicating with peer = " + m);
 			downloadErrorMap.put(DOWNLOAD_ERRORS.PEER_UNREACHABLE,
 					downloadErrorMap.get(DOWNLOAD_ERRORS.PEER_UNREACHABLE) + 1);
-			this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.FAILED);
+			this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.PEER_UNREACHABLE);
 			LoggingUtils.logInfo(logger, "peer download status= %s;downloadErrorMap=%s", this.peerDownloadStatus,
 					this.downloadErrorMap);
 			failedMachines.add(m);

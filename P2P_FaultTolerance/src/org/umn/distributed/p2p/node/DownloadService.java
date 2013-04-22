@@ -28,6 +28,7 @@ public class DownloadService {
 	private DownloadRetryPolicy downloadRetryPolicy = null;
 	private FailureQueueMonitor failedQMonitor = null;
 	private AtomicInteger activeDownloadCount;
+	private Object updateThreadMonitorObj;
 
 	/*
 	 * TODO need to keep a thread looking at the failedTask as it could fail due
@@ -35,13 +36,14 @@ public class DownloadService {
 	 */
 	public DownloadService(AtomicInteger activeDownloadCount, DownloadRetryPolicy downloadRetryPolicy,
 			Comparator<DownloadQueueObject> downloadPriorityAssignment, int initDownloadQueueCapacity,
-			String outputFolder, Machine myMachine) {
+			String outputFolder, Machine myMachine, Object updateThreadMonitorObj) {
 		this.service = Executors.newFixedThreadPool(initDownloadQueueCapacity);
 		this.outputFolder = outputFolder;
 		this.myMachineInfo = myMachine;
 		this.downloadRetryPolicy = downloadRetryPolicy;
 		this.activeDownloadCount = activeDownloadCount;
 		this.failedQMonitor = new FailureQueueMonitor();
+		this.updateThreadMonitorObj = updateThreadMonitorObj;
 	}
 
 	public void start() {
@@ -70,7 +72,7 @@ public class DownloadService {
 
 		this.service.execute(new DownloadQueueObject(dwnldStatus.getFileToDownload(), dwnldStatus
 				.getPeersToDownloadFrom(), this.myMachineInfo, this.failedTaskQ, this.outputFolder,
-				this.activeDownloadCount));
+				this.activeDownloadCount, this.updateThreadMonitorObj));
 	}
 
 	/**
