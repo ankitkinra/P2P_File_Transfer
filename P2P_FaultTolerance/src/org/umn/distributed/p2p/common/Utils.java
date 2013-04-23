@@ -1,12 +1,15 @@
 package org.umn.distributed.p2p.common;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.SocketException;
+import java.security.MessageDigest;
 import java.util.Enumeration;
 
 import org.apache.log4j.Logger;
@@ -165,5 +168,23 @@ public class Utils {
 	public static String[] getStringSplitToArr(String commandFragment, String keyValueSeparator, int limit) {
 		return commandFragment.split(keyValueSeparator, limit);
 
+	}
+
+	public static byte[] createChecksum(String filename) throws Exception {
+		InputStream fis = new FileInputStream(filename);
+
+		byte[] buffer = new byte[1024];
+		MessageDigest complete = MessageDigest.getInstance("MD5");
+		int numRead;
+
+		do {
+			numRead = fis.read(buffer);
+			if (numRead > 0) {
+				complete.update(buffer, 0, numRead);
+			}
+		} while (numRead != -1);
+
+		fis.close();
+		return complete.digest();
 	}
 }

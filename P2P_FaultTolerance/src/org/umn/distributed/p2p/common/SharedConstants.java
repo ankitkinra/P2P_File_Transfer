@@ -20,7 +20,7 @@ public class SharedConstants {
 	};
 	
 	public static enum NODE_REQUEST_TO_NODE {
-		DOWNLOAD_FILE, GET_LOAD;
+		DOWNLOAD_FILE, GET_LOAD, GET_CHECKSUM;
 	};
 	
 	public static enum FILES_UPDATE_MESSAGE_TYPE{

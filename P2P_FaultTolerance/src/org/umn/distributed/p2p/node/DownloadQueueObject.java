@@ -3,7 +3,9 @@ package org.umn.distributed.p2p.node;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -26,7 +28,8 @@ import org.umn.distributed.p2p.node.Constants.DOWNLOAD_ERRORS;
 public class DownloadQueueObject implements Runnable {
 	private Machine myMachineInfo = null;
 	private List<PeerMachine> peersToDownloadFrom;
-	//private DOWNLOAD_ACTIVITY downloadActivityStatus = DOWNLOAD_ACTIVITY.NOT_STARTED;
+	// private DOWNLOAD_ACTIVITY downloadActivityStatus =
+	// DOWNLOAD_ACTIVITY.NOT_STARTED;
 	private EnumMap<DOWNLOAD_ERRORS, Integer> downloadErrorMap = new EnumMap<Constants.DOWNLOAD_ERRORS, Integer>(
 			DOWNLOAD_ERRORS.class);
 	private Queue<DownloadQueueObject> failedTaskQRef = null;
@@ -54,8 +57,8 @@ public class DownloadQueueObject implements Runnable {
 	 * 
 	 * @param activeDownloadCount
 	 */
-	public DownloadQueueObject(DownloadStatus dwnldStatus,
-			Machine myMachineInfo, Queue<DownloadQueueObject> failedTaskQueue, String nodeSpecificOutputFolder,
+	public DownloadQueueObject(DownloadStatus dwnldStatus, Machine myMachineInfo,
+			Queue<DownloadQueueObject> failedTaskQueue, String nodeSpecificOutputFolder,
 			AtomicInteger activeDownloadCount, Object updateThreadMonitorObj) {
 		this.peersToDownloadFrom = convertToList(dwnldStatus.getPeersToDownloadFrom());
 		this.peerDownloadStatus = dwnldStatus.getPeersToDownloadFrom();
@@ -111,14 +114,16 @@ public class DownloadQueueObject implements Runnable {
 		}
 		// file is not downloaded yet, declare failed
 		if (this.dwnldStatus.getDownloadActivityStatus() != DOWNLOAD_ACTIVITY.DONE) {
-			LoggingUtils.logInfo(logger, "file=%s cannot be downloaded. The system might retry", this.dwnldStatus.getFileToDownload());
+			LoggingUtils.logInfo(logger, "file=%s cannot be downloaded. The system might retry",
+					this.dwnldStatus.getFileToDownload());
 			this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.FAILED);
 			failedTaskQRef.add(this); // adding to the retry queue.
 		}
 	}
 
 	private void downloadFileFromPeer(String fileToDownload2, PeerMachine m) {
-		LoggingUtils.logInfo(logger, "starting download of file=%s from peer = %s", this.dwnldStatus.getFileToDownload(), m);
+		LoggingUtils.logInfo(logger, "starting download of file=%s from peer = %s",
+				this.dwnldStatus.getFileToDownload(), m);
 		this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.STARTED);
 		int activeCount = this.activeDownloadCount.addAndGet(1);
 		LoggingUtils.logDebug(logger,
@@ -129,18 +134,16 @@ public class DownloadQueueObject implements Runnable {
 		downloadFileMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(fileToDownload2);
 		downloadFileMessage.append(SharedConstants.COMMAND_PARAM_SEPARATOR).append("MACHINE")
 				.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(this.myMachineInfo);
-		/**
-		 * TODO if the server fails this will break and then we need to block on
-		 * this
-		 */
-		byte[] fileDownloaded = null;
+
+		byte[] downloadedFileChecksum = null;
 		try {
 			int counter = 0;
 			while (true) {
 				counter++;
-				TCPClient.sendDataGetFile(m, Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING),
+				downloadedFileChecksum = TCPClient.sendDataGetFile(m,
+						Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING),
 						this.nodeSpecificOutputFolder + this.dwnldStatus.getFileToDownload());
-				if (verifyFile(fileDownloaded)) {
+				if (verifyFile(this.dwnldStatus.getFileToDownload(), m, downloadedFileChecksum)) {
 					// if correct stop and finish
 					this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.DONE);
 					LoggingUtils.logDebug(logger, "Downloaded file =%s from the peer=%s correctly", fileToDownload2, m);
@@ -150,20 +153,19 @@ public class DownloadQueueObject implements Runnable {
 					deleteFile(this.nodeSpecificOutputFolder + this.dwnldStatus.getFileToDownload());
 					downloadErrorMap.put(DOWNLOAD_ERRORS.FILE_CORRUPT,
 							downloadErrorMap.get(DOWNLOAD_ERRORS.FILE_CORRUPT) + 1);
-					LoggingUtils
-							.logInfo(
-									logger,
-									"file = %s failed transfer, as data corrupt.; downloadErrorMap=%s",
-									this.dwnldStatus.getFileToDownload(), downloadErrorMap);
+					LoggingUtils.logInfo(logger, "file = %s failed transfer, as data corrupt.; downloadErrorMap=%s",
+							this.dwnldStatus.getFileToDownload(), downloadErrorMap);
 				}
 				if (counter >= NodeProps.MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE) {
 					LoggingUtils
 							.logInfo(
 									logger,
 									"file = %s failed transfer more than %s on the peer = %s, cannot retry, will add peer to failed list",
-									this.dwnldStatus.getFileToDownload(), NodeProps.MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE, m);
+									this.dwnldStatus.getFileToDownload(),
+									NodeProps.MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE, m);
 					this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.FAILED);
-					//failedMachines.add(m); // Not adding the corrupted download to the failed list, just move on
+					// failedMachines.add(m); // Not adding the corrupted
+					// download to the failed list, just move on
 					break;
 				}
 
@@ -190,7 +192,32 @@ public class DownloadQueueObject implements Runnable {
 		f.delete();
 	}
 
-	private boolean verifyFile(byte[] fileDownloaded) {
+	private boolean verifyFile(String filenameDownloaded, Machine peerDownloadedFrom, byte[] fileDownloadedChecksum) {
+		if (fileDownloadedChecksum == null) {
+			return false;
+		}
+		StringBuilder downloadFileMessage = new StringBuilder(SharedConstants.NODE_REQUEST_TO_NODE.GET_CHECKSUM.name());
+		downloadFileMessage.append(SharedConstants.COMMAND_PARAM_SEPARATOR).append("FILE")
+				.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(filenameDownloaded);
+		byte[] checksum = null;
+		try {
+			checksum = TCPClient.sendData(peerDownloadedFrom,
+					Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING));
+		} catch (IOException e) {
+			LoggingUtils.logError(logger, e, "Error in communicating with peer =%s while asking for checksum",
+					peerDownloadedFrom);
+		}
+		LoggingUtils.logDebug(logger, "fileDownloadedChecksum=%s; checksum=%s",
+				Arrays.toString(fileDownloadedChecksum), Arrays.toString(checksum));
+		if (checksum == null || fileDownloadedChecksum == null) {
+			return false;
+		} else {
+			return Arrays.equals(fileDownloadedChecksum, checksum);
+		}
+
+	}
+
+	private boolean verifyFile2(byte[] fileDownloaded) {
 		int number = r.nextInt(100);
 		return number < 0; // reducing file fail probability
 	}

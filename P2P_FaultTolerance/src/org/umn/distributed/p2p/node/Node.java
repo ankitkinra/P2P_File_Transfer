@@ -33,7 +33,6 @@ import org.umn.distributed.p2p.common.Utils;
 import org.umn.distributed.p2p.node.Constants.DOWNLOAD_ACTIVITY;
 
 public class Node extends BasicServer {
-
 	protected Logger logger = Logger.getLogger(this.getClass());
 	protected int port;
 	private final AtomicInteger currentUploads = new AtomicInteger(0);
@@ -57,6 +56,7 @@ public class Node extends BasicServer {
 	private static Map<LatencyObj, Integer> latencyNumbers = new HashMap<LatencyObj, Integer>();
 	private static Set<Integer> latencyMachinesId = new HashSet<Integer>();
 	private boolean trackingServerUnavlblBlocked = false;
+	private HashMap<String, byte[]> myFilesAndChecksums = new HashMap<String, byte[]>();
 
 	private void initLatencyMap() throws IOException {
 		if (latencyNumbers.size() == 0) {
@@ -153,10 +153,20 @@ public class Node extends BasicServer {
 				int load = handleGetLoadMessage(request);
 				return Utils.stringToByte(SharedConstants.COMMAND_SUCCESS + SharedConstants.COMMAND_PARAM_SEPARATOR
 						+ load);
+			} else if (request.startsWith(NODE_REQUEST_TO_NODE.GET_CHECKSUM.name())) {
+				byte[] checksum = handleGetChecksumMessage(request);
+				return checksum;
 			}
 		}
 		return Utils.stringToByte(SharedConstants.INVALID_COMMAND);
 
+	}
+
+	private byte[] handleGetChecksumMessage(String request) {
+		String[] requestArr = Utils.splitCommandIntoFragments(request);
+		String[] fileNameArr = Utils.getKeyAndValuefromFragment(requestArr[0]);
+		String file = fileNameArr[1];
+		return myFilesAndChecksums.get(file);
 	}
 
 	private int handleGetLoadMessage(String request) {
@@ -197,10 +207,11 @@ public class Node extends BasicServer {
 		currentUploads.incrementAndGet();
 		File fileToSend = null;
 		try {
-			byte[] buffer = new byte[1024];
+			byte[] buffer = new byte[NodeProps.FILE_BUFFER_LENGTH];
 			fileToSend = new File(fileName);
 			if (fileToSend.isFile() && fileToSend.canRead()) {
 				try {
+
 					FileInputStream fileInputStream = new FileInputStream(fileToSend);
 					int number = 0;
 					LoggingUtils.logInfo(logger, "file = %s to peer =%s;fileToSend = %s", fileName, machineToSend,
@@ -226,8 +237,7 @@ public class Node extends BasicServer {
 				}
 			}
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			LoggingUtils.logError(logger, e, "Exception while tranferring file File=%s ", fileName);
 		} finally {
 			currentUploads.decrementAndGet();
 		}
@@ -278,6 +288,14 @@ public class Node extends BasicServer {
 		return foundPeers;
 	}
 
+	private void calculateAndAddChecksums(List<String> fileNamesToSend) throws Exception {
+		for (String fileName : fileNamesToSend) {
+			// as the file has come here maybe it has updated modified
+			myFilesAndChecksums.put(fileName, Utils.createChecksum(directoryToWatchAndSave + fileName));
+		}
+
+	}
+
 	private void checkIfBlockedAndAct(String message) {
 		while (trackingServerUnavlblBlocked) {
 			LoggingUtils.logInfo(logger,
@@ -304,24 +322,19 @@ public class Node extends BasicServer {
 		getLoadMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append("MACHINE")
 				.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(this.myInfo);
 
-		/**
-		 * TODO if the server fails this will break and then we need to block on
-		 * this
-		 */
 		byte[] awqReturn = null;
 		try {
 			awqReturn = TCPClient.sendData(peer, Utils.stringToByte(getLoadMessage.toString(), NodeProps.ENCODING));
 			String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
-			// return expected as ""
 			String[] brokenOnCommandSeparator = Utils.splitCommandIntoFragments(awqStr);
 			if (brokenOnCommandSeparator[0].startsWith(SharedConstants.COMMAND_SUCCESS)) {
 				load = Integer.parseInt(brokenOnCommandSeparator[1]);
 			}
 			return load;
 		} catch (IOException e) {
-			// if connection breaks, it means we need to block on the tracking
-			// server
 			LoggingUtils.logError(logger, e, "Error in communicating with peer =%s while asking for load", peer);
+			// the parent method will handle the removal of this peer from the
+			// server
 			throw e;
 		}
 
@@ -502,8 +515,9 @@ public class Node extends BasicServer {
 				do {
 					List<String> fileNamesToSend = getFilesFromTheWatchedDirectory(lastUpdateTime);
 					if (fileNamesToSend.size() > 0) {
+						calculateAndAddChecksums(fileNamesToSend);
 						updateFileList(FILES_UPDATE_MESSAGE_TYPE.COMPLETE, fileNamesToSend);
-						if(Node.this.trackingServerUnavlblBlocked){
+						if (Node.this.trackingServerUnavlblBlocked) {
 							Node.this.trackingServerUnavlblBlocked = false;
 						}
 					}
@@ -524,6 +538,7 @@ public class Node extends BasicServer {
 			}
 
 		}
+
 	}
 
 	private class UnfinishedDownloadTaskMonitor extends Thread {

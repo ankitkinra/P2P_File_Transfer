@@ -5,6 +5,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 import org.apache.log4j.Logger;
@@ -72,7 +74,7 @@ public class TCPClient {
 		return outputBuffer;
 	}
 
-	public static void sendDataGetFile(Machine remoteMachine, byte[] data, String fileWriteLocation)
+	public static byte[] sendDataGetFile(Machine remoteMachine, byte[] data, String fileWriteLocation)
 			throws IOException {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Send " + Utils.byteToString(data) + " to " + remoteMachine);
@@ -104,22 +106,29 @@ public class TCPClient {
 		clientSocket.getOutputStream().flush();
 		FileOutputStream fos = null;
 
-		
+		MessageDigest md5Digest = null;
 		try {
+			md5Digest = MessageDigest.getInstance("MD5");
 			is = clientSocket.getInputStream();
 			fos = new FileOutputStream(fileWriteLocation);
 			count = 0;
 			while ((count = is.read(buffer)) >= 0) {
 				fos.write(buffer, 0, count);
+				// calculate the md5 here as well
+				md5Digest.update(buffer, 0, count);
 			}
 		} catch (IOException ioe) {
 			logger.error("Error connecting to " + remoteMachine, ioe);
 			throw ioe;
+		} catch (NoSuchAlgorithmException e) {
+			logger.error("Error calculating the checksum:", e);
+
 		} finally {
 			fos.close();
 			is.close();
 			clientSocket.close();
 		}
-		
+		return md5Digest != null ? md5Digest.digest() : null;
+
 	}
 }
