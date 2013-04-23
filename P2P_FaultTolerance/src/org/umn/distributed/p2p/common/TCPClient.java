@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Random;
 
 import org.apache.log4j.Logger;
@@ -71,6 +72,8 @@ public class TCPClient {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Data received at client " + Utils.byteToString(buffer));
 		}
+		LoggingUtils.logDebug(logger, "Data recieved at client = %s for the command =%s which was sent to machine=%s",
+				Arrays.toString(buffer), Utils.byteToString(data), remoteMachine);
 		return outputBuffer;
 	}
 

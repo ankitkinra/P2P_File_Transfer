@@ -164,7 +164,7 @@ public class Node extends BasicServer {
 
 	private byte[] handleGetChecksumMessage(String request) {
 		String[] requestArr = Utils.splitCommandIntoFragments(request);
-		String[] fileNameArr = Utils.getKeyAndValuefromFragment(requestArr[0]);
+		String[] fileNameArr = Utils.getKeyAndValuefromFragment(requestArr[1]);
 		String file = fileNameArr[1];
 		return myFilesAndChecksums.get(file);
 	}
@@ -291,7 +291,10 @@ public class Node extends BasicServer {
 	private void calculateAndAddChecksums(List<String> fileNamesToSend) throws Exception {
 		for (String fileName : fileNamesToSend) {
 			// as the file has come here maybe it has updated modified
-			myFilesAndChecksums.put(fileName, Utils.createChecksum(directoryToWatchAndSave + fileName));
+			byte[] checkSum = Utils.createChecksum(directoryToWatchAndSave + fileName);
+			LoggingUtils.logDebug(logger, "Created checksum =%s for the File =%s", Arrays.toString(checkSum),
+					fileName);
+			myFilesAndChecksums.put(fileName, checkSum);
 		}
 
 	}

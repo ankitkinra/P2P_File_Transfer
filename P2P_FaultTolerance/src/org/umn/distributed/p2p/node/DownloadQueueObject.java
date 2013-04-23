@@ -193,6 +193,9 @@ public class DownloadQueueObject implements Runnable {
 	}
 
 	private boolean verifyFile(String filenameDownloaded, Machine peerDownloadedFrom, byte[] fileDownloadedChecksum) {
+		LoggingUtils.logDebug(logger,
+				"verification of downloaded file begins. fileName=%s, machine =%s fileDownloadedChecksum=%s",
+				filenameDownloaded, peerDownloadedFrom, fileDownloadedChecksum);
 		if (fileDownloadedChecksum == null) {
 			return false;
 		}
