@@ -7,27 +7,39 @@ import java.util.List;
 import org.apache.log4j.Logger;
 
 public class Machine {
-	protected Logger logger = Logger.getLogger(this.getClass());
 
+	protected Logger logger = Logger.getLogger(this.getClass());
+	public static int UNASSIGNED_MACHINE_ID = -1;
 	public static final String FORMAT_START = "[";
 	public static final String FORMAT_END = "]";
-
+	private int machineId = UNASSIGNED_MACHINE_ID;
 	private String IP;
 	private int port;
-	private int extPort;
 
-	public Machine(String iP, int port, int extPort) {
+	public Machine(String iP, int port, int machineId) {
 		this.IP = iP;
 		this.port = port;
-		this.extPort = extPort;
+		this.machineId = machineId;
+	}
+
+	public int getMachineId() {
+		return machineId;
+	}
+
+	public void setMachineId(int machineId) {
+		this.machineId = machineId;
 	}
 
 	public Machine(String iP, int port) {
-		this(iP, port, 0);
+		this(iP, port, UNASSIGNED_MACHINE_ID);
 	}
 
 	public Machine(String iP, String port) {
-		this(iP, Integer.parseInt(port), 0);
+		this(iP, Integer.parseInt(port), UNASSIGNED_MACHINE_ID);
+	}
+
+	public Machine(String iP, String port, int machineId) {
+		this(iP, Integer.parseInt(port), machineId);
 	}
 
 	public String getIP() {
@@ -40,14 +52,6 @@ public class Machine {
 
 	public void setPort(int port) {
 		this.port = port;
-	}
-
-	public int getExternalPort() {
-		return extPort;
-	}
-
-	public void setExternalPort(int extPort) {
-		this.extPort = extPort;
 	}
 
 	@Override
@@ -82,7 +86,7 @@ public class Machine {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append(FORMAT_START).append(IP).append(SharedConstants.COMMAND_LIST_SEPARATOR).append(port)
-				.append(SharedConstants.COMMAND_LIST_SEPARATOR).append(extPort).append(FORMAT_END);
+				.append(SharedConstants.COMMAND_LIST_SEPARATOR).append(machineId).append(FORMAT_END);
 		return builder.toString();
 	}
 
@@ -97,13 +101,14 @@ public class Machine {
 		}
 
 		int internalPort = 0;
-		int externalPort = 0;
+		int machineId = 0;
 		try {
 			internalPort = Integer.parseInt(machineParams[1]);
-			externalPort = Integer.parseInt(machineParams[2]);
-			return new Machine(machineParams[0], internalPort, externalPort);
+			machineId = Integer.parseInt(machineParams[2]);
+			return new Machine(machineParams[0], internalPort, machineId);
 		} catch (NumberFormatException nfe) {
-			throw new IllegalArgumentException("Invalid article id/parentId");
+			throw new IllegalArgumentException(String.format("Invalid internalId =%s or machineId=%s",
+					machineParams[1], machineParams[2]));
 		}
 	}
 

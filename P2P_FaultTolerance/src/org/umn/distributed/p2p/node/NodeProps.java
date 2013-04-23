@@ -16,7 +16,8 @@ public class NodeProps {
 	public static final Integer MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE = 3;
 	public static final int FILE_BUFFER_LENGTH = 1024;
 	public static final String DEFAULT_LATENCY_FILE = "latency.properties";
-	public static final long UNFINISHED_TASK_INTERVAL = 10*1000;
+	public static final long UNFINISHED_TASK_INTERVAL = 5*1000;
+	public static final long UNAVAILABLE_PEER_SERVER_BLOCKED_TIME = 10*1000;
 	public static void loadProperties(String propertyFile) {
 		Properties prop = new Properties();
 		try {

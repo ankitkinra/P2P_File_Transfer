@@ -70,8 +70,7 @@ public class DownloadService {
 	 */
 	public void acceptDownloadRequest(DownloadStatus dwnldStatus) {
 
-		this.service.execute(new DownloadQueueObject(dwnldStatus.getFileToDownload(), dwnldStatus
-				.getPeersToDownloadFrom(), this.myMachineInfo, this.failedTaskQ, this.outputFolder,
+		this.service.execute(new DownloadQueueObject(dwnldStatus, this.myMachineInfo, this.failedTaskQ, this.outputFolder,
 				this.activeDownloadCount, this.updateThreadMonitorObj));
 	}
 

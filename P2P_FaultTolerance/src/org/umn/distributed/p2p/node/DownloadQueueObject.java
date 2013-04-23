@@ -25,9 +25,8 @@ import org.umn.distributed.p2p.node.Constants.DOWNLOAD_ERRORS;
 
 public class DownloadQueueObject implements Runnable {
 	private Machine myMachineInfo = null;
-	private String fileToDownload;
 	private List<PeerMachine> peersToDownloadFrom;
-	private DOWNLOAD_ACTIVITY downloadActivityStatus = DOWNLOAD_ACTIVITY.NOT_STARTED;
+	//private DOWNLOAD_ACTIVITY downloadActivityStatus = DOWNLOAD_ACTIVITY.NOT_STARTED;
 	private EnumMap<DOWNLOAD_ERRORS, Integer> downloadErrorMap = new EnumMap<Constants.DOWNLOAD_ERRORS, Integer>(
 			DOWNLOAD_ERRORS.class);
 	private Queue<DownloadQueueObject> failedTaskQRef = null;
@@ -37,13 +36,10 @@ public class DownloadQueueObject implements Runnable {
 	private AtomicInteger activeDownloadCount;
 	private Map<PeerMachine, DOWNLOAD_ACTIVITY> peerDownloadStatus;
 	private Object updateThreadMonitorObj;
+	private DownloadStatus dwnldStatus;
 
 	public String getFileToDownload() {
-		return fileToDownload;
-	}
-
-	public DOWNLOAD_ACTIVITY getDownloadActivityStatus() {
-		return downloadActivityStatus;
+		return this.dwnldStatus.getFileToDownload();
 	}
 
 	public EnumMap<DOWNLOAD_ERRORS, Integer> getDownloadErrorMap() {
@@ -58,12 +54,12 @@ public class DownloadQueueObject implements Runnable {
 	 * 
 	 * @param activeDownloadCount
 	 */
-	public DownloadQueueObject(String fileToDownload, Map<PeerMachine, DOWNLOAD_ACTIVITY> mapPeerMachineDownloadStatus,
+	public DownloadQueueObject(DownloadStatus dwnldStatus,
 			Machine myMachineInfo, Queue<DownloadQueueObject> failedTaskQueue, String nodeSpecificOutputFolder,
 			AtomicInteger activeDownloadCount, Object updateThreadMonitorObj) {
-		this.fileToDownload = fileToDownload;
-		this.peersToDownloadFrom = convertToList(mapPeerMachineDownloadStatus);
-		this.peerDownloadStatus = mapPeerMachineDownloadStatus;
+		this.peersToDownloadFrom = convertToList(dwnldStatus.getPeersToDownloadFrom());
+		this.peerDownloadStatus = dwnldStatus.getPeersToDownloadFrom();
+		this.dwnldStatus = dwnldStatus;
 		this.myMachineInfo = myMachineInfo;
 		this.failedTaskQRef = failedTaskQueue;
 		this.nodeSpecificOutputFolder = nodeSpecificOutputFolder;
@@ -99,30 +95,30 @@ public class DownloadQueueObject implements Runnable {
 	 * 2. if we run into an error we need to insert this task back in failedTaskQRef
 	 */
 	public void run() {
-		LoggingUtils.logInfo(logger, "starting download of file=%s", this.fileToDownload);
-		downloadActivityStatus = DOWNLOAD_ACTIVITY.STARTED;
+		LoggingUtils.logInfo(logger, "starting download of file=%s", this.dwnldStatus.getFileToDownload());
+		this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.STARTED);
 		for (PeerMachine m : this.peersToDownloadFrom) {
 			if (!this.failedMachines.contains(m)) {
-				downloadFileFromPeer(this.fileToDownload, m);
+				downloadFileFromPeer(this.dwnldStatus.getFileToDownload(), m);
 			}
-			if (downloadActivityStatus.equals(DOWNLOAD_ACTIVITY.DONE)) {
+			if (this.dwnldStatus.getDownloadActivityStatus().equals(DOWNLOAD_ACTIVITY.DONE)) {
 				synchronized (this.updateThreadMonitorObj) {
 					this.updateThreadMonitorObj.notifyAll();
 				}
-				LoggingUtils.logInfo(logger, "file=%s downloaded correctly.", this.fileToDownload);
+				LoggingUtils.logInfo(logger, "file=%s downloaded correctly.", this.dwnldStatus.getFileToDownload());
 				break;
 			}
 		}
 		// file is not downloaded yet, declare failed
-		if (downloadActivityStatus != DOWNLOAD_ACTIVITY.DONE) {
-			LoggingUtils.logInfo(logger, "file=%s cannot be downloaded. The system might retry", this.fileToDownload);
-			downloadActivityStatus = DOWNLOAD_ACTIVITY.FAILED;
+		if (this.dwnldStatus.getDownloadActivityStatus() != DOWNLOAD_ACTIVITY.DONE) {
+			LoggingUtils.logInfo(logger, "file=%s cannot be downloaded. The system might retry", this.dwnldStatus.getFileToDownload());
+			this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.FAILED);
 			failedTaskQRef.add(this); // adding to the retry queue.
 		}
 	}
 
 	private void downloadFileFromPeer(String fileToDownload2, PeerMachine m) {
-		LoggingUtils.logInfo(logger, "starting download of file=%s from peer = %s", this.fileToDownload, m);
+		LoggingUtils.logInfo(logger, "starting download of file=%s from peer = %s", this.dwnldStatus.getFileToDownload(), m);
 		this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.STARTED);
 		int activeCount = this.activeDownloadCount.addAndGet(1);
 		LoggingUtils.logDebug(logger,
@@ -143,29 +139,29 @@ public class DownloadQueueObject implements Runnable {
 			while (true) {
 				counter++;
 				TCPClient.sendDataGetFile(m, Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING),
-						this.nodeSpecificOutputFolder + this.fileToDownload);
+						this.nodeSpecificOutputFolder + this.dwnldStatus.getFileToDownload());
 				if (verifyFile(fileDownloaded)) {
 					// if correct stop and finish
-					downloadActivityStatus = DOWNLOAD_ACTIVITY.DONE;
+					this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.DONE);
 					LoggingUtils.logDebug(logger, "Downloaded file =%s from the peer=%s correctly", fileToDownload2, m);
 					break;
 				} else {
 					// increment the error count
-					deleteFile(this.nodeSpecificOutputFolder + this.fileToDownload);
+					deleteFile(this.nodeSpecificOutputFolder + this.dwnldStatus.getFileToDownload());
 					downloadErrorMap.put(DOWNLOAD_ERRORS.FILE_CORRUPT,
 							downloadErrorMap.get(DOWNLOAD_ERRORS.FILE_CORRUPT) + 1);
 					LoggingUtils
 							.logInfo(
 									logger,
 									"file = %s failed transfer, as data corrupt.; downloadErrorMap=%s",
-									this.fileToDownload, downloadErrorMap);
+									this.dwnldStatus.getFileToDownload(), downloadErrorMap);
 				}
 				if (counter >= NodeProps.MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE) {
 					LoggingUtils
 							.logInfo(
 									logger,
 									"file = %s failed transfer more than %s on the peer = %s, cannot retry, will add peer to failed list",
-									this.fileToDownload, NodeProps.MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE, m);
+									this.dwnldStatus.getFileToDownload(), NodeProps.MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE, m);
 					this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.FAILED);
 					//failedMachines.add(m); // Not adding the corrupted download to the failed list, just move on
 					break;
@@ -223,11 +219,11 @@ public class DownloadQueueObject implements Runnable {
 		builder.append("DownloadQueueObject [myMachineInfo=");
 		builder.append(myMachineInfo);
 		builder.append(", fileToDownload=");
-		builder.append(fileToDownload);
+		builder.append(this.dwnldStatus.getFileToDownload());
 		builder.append(", peersToDownloadFrom=");
 		builder.append(peersToDownloadFrom);
 		builder.append(", downloadActivityStatus=");
-		builder.append(downloadActivityStatus);
+		builder.append(this.dwnldStatus.getDownloadActivityStatus());
 		builder.append(", downloadErrorMap=");
 		builder.append(downloadErrorMap);
 		builder.append(", failedTaskQRef=");
