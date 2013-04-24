@@ -69,9 +69,9 @@ public class DownloadService {
 	 * @param dwnldStatus
 	 */
 	public void acceptDownloadRequest(DownloadStatus dwnldStatus) {
-
-		this.service.execute(new DownloadQueueObject(dwnldStatus, this.myMachineInfo, this.failedTaskQ, this.outputFolder,
-				this.activeDownloadCount, this.updateThreadMonitorObj));
+		activeDownloadCount.incrementAndGet();
+		this.service.execute(new DownloadQueueObject(dwnldStatus, this.myMachineInfo, this.failedTaskQ,
+				this.outputFolder, this.activeDownloadCount, this.updateThreadMonitorObj));
 	}
 
 	/**

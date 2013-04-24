@@ -89,6 +89,5 @@ public class DownloadStatus {
 		builder.append("]");
 		return builder.toString();
 	}
-	
 
 }

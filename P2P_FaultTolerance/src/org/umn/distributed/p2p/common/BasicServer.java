@@ -17,6 +17,7 @@ public abstract class BasicServer implements TcpServerDelegate {
 		this.tcpServer = new TCPServer(this, numTreads, commandsWhoHandleTheirOutput);
 		myInfo = new Machine(Utils.getLocalServerIp(), this.port);
 	}
+
 	public BasicServer(int port, int numTreads) {
 		this(port, numTreads, null);
 	}
@@ -51,7 +52,7 @@ public abstract class BasicServer implements TcpServerDelegate {
 		}
 
 	}
-	
+
 	@Override
 	public void handleRequest(byte[] request, OutputStream socketOutput) {
 		try {
@@ -60,18 +61,17 @@ public abstract class BasicServer implements TcpServerDelegate {
 		} catch (Exception e) {
 			logger.error("Exception handling request in Tracking Server", e);
 		}
-		
+
 	}
 
-	protected void handleSpecificRequest(String req, OutputStream socketOutput){
-		//Empty declaration
+	protected void handleSpecificRequest(String req, OutputStream socketOutput) {
+		// Empty declaration
 	}
 
 	protected abstract byte[] handleSpecificRequest(String message);
-	
+
 	protected abstract void stopSpecific();
 
 	protected abstract void startSpecific();
-
 
 }

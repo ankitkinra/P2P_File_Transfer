@@ -57,6 +57,8 @@ public class Node extends BasicServer {
 	private static Set<Integer> latencyMachinesId = new HashSet<Integer>();
 	private boolean trackingServerUnavlblBlocked = false;
 	private HashMap<String, byte[]> myFilesAndChecksums = new HashMap<String, byte[]>();
+	private double avgTimeToServiceUploadRequest = 0.0;
+	private long totalUploadRequestHandled = 0;
 
 	private void initLatencyMap() throws IOException {
 		if (latencyNumbers.size() == 0) {
@@ -151,8 +153,12 @@ public class Node extends BasicServer {
 			logger.info("$$$$$$$$$$$$Message received at Node:" + request);
 			if (request.startsWith(NODE_REQUEST_TO_NODE.GET_LOAD.name())) {
 				int load = handleGetLoadMessage(request);
-				return Utils.stringToByte(SharedConstants.COMMAND_SUCCESS + SharedConstants.COMMAND_PARAM_SEPARATOR
-						+ load);
+				StringBuilder returnLoadMessage = new StringBuilder();
+				returnLoadMessage.append(SharedConstants.COMMAND_SUCCESS).append(
+						SharedConstants.COMMAND_PARAM_SEPARATOR);
+				returnLoadMessage.append(load).append(SharedConstants.COMMAND_PARAM_SEPARATOR)
+						.append(avgTimeToServiceUploadRequest);
+				return Utils.stringToByte(returnLoadMessage.toString());
 			} else if (request.startsWith(NODE_REQUEST_TO_NODE.GET_CHECKSUM.name())) {
 				byte[] checksum = handleGetChecksumMessage(request);
 				return checksum;
@@ -193,13 +199,26 @@ public class Node extends BasicServer {
 	 * @param socketOutput
 	 */
 	private void handleUploadFileRequest(String request, OutputStream socketOutput) {
-		LoggingUtils.logInfo(logger, "Starting upload of request=%s; dirToLookIn=%s", request, directoryToWatchAndSave);
+		LoggingUtils.logInfo(logger, "Starting upload number of request=%s; dirToLookIn=%s", request,
+				directoryToWatchAndSave);
 		String[] requestArr = Utils.splitCommandIntoFragments(request);
 		String[] fileNameArr = Utils.getKeyAndValuefromFragment(requestArr[0]);
 		String[] destMachineArr = Utils.getKeyAndValuefromFragment(requestArr[1]);
 		Machine m = Machine.parse(destMachineArr[1]);
-
+		long timeToUpload = System.currentTimeMillis();
 		uploadFile(this.directoryToWatchAndSave + fileNameArr[1], m, socketOutput);
+		timeToUpload = System.currentTimeMillis() - timeToUpload;
+		updateAverageTimeToServiceUploadRequest(timeToUpload);
+
+	}
+
+	private synchronized double updateAverageTimeToServiceUploadRequest(long timeToServiceRequest) {
+		long finishedUploads = totalUploadRequestHandled;
+		totalUploadRequestHandled++;
+		double denominator = finishedUploads + 1.0;
+		avgTimeToServiceUploadRequest = avgTimeToServiceUploadRequest * (finishedUploads / denominator)
+				+ timeToServiceRequest / denominator;
+		return avgTimeToServiceUploadRequest;
 	}
 
 	private void uploadFile(String fileName, Machine machineToSend, OutputStream socketOutput) {

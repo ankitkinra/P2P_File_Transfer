@@ -11,21 +11,17 @@ public class LoggingUtils {
 	private static Logger logger;
 	static {
 		System.out.println("Intializing log4j");
-		/*String LOG_FILE = ServerProps.logFilePath;
-		if (ServerProps.logFilePath == null) {
-			LOG_FILE = ClientProps.logFilePath;
-		}
-		Properties logProp = new Properties();
-
-		try {
-			logProp.load(new FileInputStream(LOG_FILE));
-			PropertyConfigurator.configure(logProp);
-			logger = Logger.getLogger(LoggingUtils.class);
-			logger.info("Logging enabled");
-		} catch (IOException e) {
-			e.printStackTrace();
-			System.out.println("Logging not enabled");
-		}*/
+		/*
+		 * String LOG_FILE = ServerProps.logFilePath; if
+		 * (ServerProps.logFilePath == null) { LOG_FILE =
+		 * ClientProps.logFilePath; } Properties logProp = new Properties();
+		 * 
+		 * try { logProp.load(new FileInputStream(LOG_FILE));
+		 * PropertyConfigurator.configure(logProp); logger =
+		 * Logger.getLogger(LoggingUtils.class); logger.info("Logging enabled");
+		 * } catch (IOException e) { e.printStackTrace();
+		 * System.out.println("Logging not enabled"); }
+		 */
 	}
 
 	public static void testLog(String string) {

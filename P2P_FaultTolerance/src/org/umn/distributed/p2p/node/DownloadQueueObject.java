@@ -96,21 +96,27 @@ public class DownloadQueueObject implements Runnable {
 	public void run() {
 		LoggingUtils.logInfo(logger, "starting download of file=%s", this.dwnldStatus.getFileToDownload());
 		this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.STARTED);
-		for (PeerMachine m : this.peersToDownloadFrom) {
-			if (!this.failedMachines.contains(m)) {
-				try {
-					downloadFileFromPeer(this.dwnldStatus.getFileToDownload(), m);
-				} catch (Exception e) {
-					throw new RuntimeException(e);
+		try {
+			for (PeerMachine m : this.peersToDownloadFrom) {
+				if (!this.failedMachines.contains(m)) {
+					try {
+						downloadFileFromPeer(this.dwnldStatus.getFileToDownload(), m);
+					} catch (Exception e) {
+						throw new RuntimeException(e);
+					}
+				}
+				if (this.dwnldStatus.getDownloadActivityStatus().equals(DOWNLOAD_ACTIVITY.DONE)) {
+					synchronized (this.updateThreadMonitorObj) {
+						this.updateThreadMonitorObj.notifyAll();
+					}
+					LoggingUtils.logInfo(logger, "file=%s downloaded correctly.", this.dwnldStatus.getFileToDownload());
+					break;
 				}
 			}
-			if (this.dwnldStatus.getDownloadActivityStatus().equals(DOWNLOAD_ACTIVITY.DONE)) {
-				synchronized (this.updateThreadMonitorObj) {
-					this.updateThreadMonitorObj.notifyAll();
-				}
-				LoggingUtils.logInfo(logger, "file=%s downloaded correctly.", this.dwnldStatus.getFileToDownload());
-				break;
-			}
+		} catch (Exception e) {
+			LoggingUtils.logError(logger, e, "Error in downloading of file %s", this.dwnldStatus.getFileToDownload());
+		} finally {
+			this.activeDownloadCount.decrementAndGet();
 		}
 		// file is not downloaded yet, declare failed
 		if (this.dwnldStatus.getDownloadActivityStatus() != DOWNLOAD_ACTIVITY.DONE) {
@@ -125,7 +131,7 @@ public class DownloadQueueObject implements Runnable {
 		LoggingUtils.logInfo(logger, "starting download of file=%s from peer = %s",
 				this.dwnldStatus.getFileToDownload(), m);
 		this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.STARTED);
-		int activeCount = this.activeDownloadCount.addAndGet(1);
+		int activeCount = this.activeDownloadCount.get();
 		LoggingUtils.logDebug(logger,
 				"Starting the download on the peer = %s for the file =%s and the activeDownloadCount = %s", m,
 				fileToDownload2, activeCount);
@@ -180,8 +186,6 @@ public class DownloadQueueObject implements Runnable {
 			LoggingUtils.logInfo(logger, "peer download status= %s;downloadErrorMap=%s", this.peerDownloadStatus,
 					this.downloadErrorMap);
 			failedMachines.add(m);
-		} finally {
-			this.activeDownloadCount.decrementAndGet();
 		}
 
 	}
@@ -239,7 +243,7 @@ public class DownloadQueueObject implements Runnable {
 		builder.append(", nodeSpecificOutputFolder=");
 		builder.append(nodeSpecificOutputFolder);
 		builder.append(", activeDownloadCount=");
-		builder.append(activeDownloadCount);
+		builder.append(activeDownloadCount.get());
 		builder.append(", peerDownloadStatus=");
 		builder.append(peerDownloadStatus);
 		builder.append(", failedMachines=");

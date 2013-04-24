@@ -68,8 +68,8 @@ public class UploadService {
 								this.machineToSend, fileToSend.length());
 						int count = 0;
 						while ((number = fileInputStream.read(buffer)) != -1) {
-							LoggingUtils.logInfo(logger, "Writing buffer number=%s for file = %s to peer =%s", count,this.fileName,
-									this.machineToSend);
+							LoggingUtils.logInfo(logger, "Writing buffer number=%s for file = %s to peer =%s", count,
+									this.fileName, this.machineToSend);
 							this.socketOutput.write(buffer, 0, number);
 							this.socketOutput.flush();
 							count++;

@@ -58,14 +58,17 @@ public class TCPServer implements Runnable {
 	}
 
 	public void stop() {
-		logger.debug("Stopping TcpServer on port:" + this.serverSocket.getLocalPort());
-		this.running = false;
-		try {
-			this.serverSocket.close();
-		} catch (IOException ioe) {
-			logger.debug("Interrupted ServerSocket in while listening", ioe);
+		if(this.serverSocket != null){
+			logger.debug("Stopping TcpServer on port:" + this.serverSocket);
+			this.running = false;
+			try {
+				this.serverSocket.close();
+			} catch (IOException ioe) {
+				logger.debug("Interrupted ServerSocket in while listening", ioe);
+			}
+			logger.debug("ServerSocket closed");
 		}
-		logger.debug("ServerSocket closed");
+		
 		this.executerService.shutdown();
 		try {
 			if (!this.executerService.awaitTermination(STOP_TIMEOUT, TimeUnit.MILLISECONDS)) {
@@ -106,7 +109,7 @@ public class TCPServer implements Runnable {
 						bos.write(buffer, 0, count);
 					}
 				} while (is.available() > 0);
-				
+
 				bos.flush();
 				buffer = bos.toByteArray();
 				if (logger.isDebugEnabled()) {
@@ -121,13 +124,12 @@ public class TCPServer implements Runnable {
 					buffer = delegate.handleRequest(buffer);
 					if (logger.isDebugEnabled()) {
 						logger.debug("Data returned to client :" + Utils.byteToString(buffer));
-						// other section will write on its own we just need to close
+						// other section will write on its own we just need to
+						// close
 						// the stream
 						socket.getOutputStream().write(buffer);
 					}
 				}
-
-				
 
 				bos.close();
 				// TODO:add specific handling for different exceptions types

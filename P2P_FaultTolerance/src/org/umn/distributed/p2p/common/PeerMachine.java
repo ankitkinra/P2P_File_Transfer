@@ -18,11 +18,19 @@ public class PeerMachine extends Machine {
 	 * is enforced
 	 */
 	private int currentLoad;
+	private double avgTimeToServiceRequest;
 
 	public PeerMachine(String iP, int port, long latencyMillis, int currentLoad) {
 		super(iP, port);
 		this.currentLoad = currentLoad;
 		this.latencyMillis = latencyMillis;
+	}
+
+	public PeerMachine(String iP, int port, long latencyMillis, int currentLoad, double avgTimeToService) {
+		super(iP, port);
+		this.currentLoad = currentLoad;
+		this.latencyMillis = latencyMillis;
+		this.avgTimeToServiceRequest = avgTimeToService;
 	}
 
 	public long getLatencyMillis() {
@@ -31,6 +39,14 @@ public class PeerMachine extends Machine {
 
 	public int getCurrentLoad() {
 		return currentLoad;
+	}
+
+	public double getAvgTimeToServiceRequest() {
+		return avgTimeToServiceRequest;
+	}
+
+	public void setAvgTimeToServiceRequest(double avgTimeToServiceRequest) {
+		this.avgTimeToServiceRequest = avgTimeToServiceRequest;
 	}
 
 	/**
@@ -54,6 +70,18 @@ public class PeerMachine extends Machine {
 		private double getPeerWeight(PeerMachine machine) {
 			return machine.getCurrentLoad() * machine.currentLoadWeight + machine.getLatencyMillis()
 					* machine.latencyMillis;
+		}
+
+		/**
+		 * <code>
+		 * machine.getCurrentLoad() * machine.getAvgTimeToServiceRequest() == probabilistic time when server is free
+		 * </code> 
+		 * @param machine
+		 * @return
+		 */
+		private double getPeerWeight2(PeerMachine machine) {
+			return machine.getCurrentLoad() * machine.getAvgTimeToServiceRequest() * machine.currentLoadWeight
+					+ machine.getLatencyMillis() * machine.latencyMillis;
 		}
 	};
 

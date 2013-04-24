@@ -4,8 +4,10 @@ import java.io.OutputStream;
 
 public interface TcpServerDelegate {
 	public byte[] handleRequest(byte[] request);
+
 	/**
 	 * In case the client wants to have full control of the sending
+	 * 
 	 * @param request
 	 * @param socketOutput
 	 */
