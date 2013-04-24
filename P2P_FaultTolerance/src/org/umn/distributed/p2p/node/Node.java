@@ -464,6 +464,10 @@ public class Node extends BasicServer {
 		// TODO need to block all the communication with server and stop all
 		// functioning
 		// Optional still allow peers to talk to each other.
+		this.trackingServerUnavlblBlocked = true;
+		LoggingUtils.logInfo(logger,
+				"Blocked the peer as Tracking server is unavailable; trackingServerUnavlblBlocked=%s",
+				trackingServerUnavlblBlocked);
 	}
 
 	@Override
@@ -533,34 +537,39 @@ public class Node extends BasicServer {
 
 		@Override
 		public void run() {
-			try {
-				do {
+
+			do {
+				try {
 					List<String> fileNamesToSend = getFilesFromTheWatchedDirectory(lastUpdateTime);
-					if (fileNamesToSend.size() > 0) {
+					if (fileNamesToSend.size() > 0 || trackingServerUnavlblBlocked) {
 						calculateAndAddChecksums(fileNamesToSend);
 						updateFileList(FILES_UPDATE_MESSAGE_TYPE.COMPLETE, fileNamesToSend);
 						if (Node.this.trackingServerUnavlblBlocked) {
 							Node.this.trackingServerUnavlblBlocked = false;
+							LoggingUtils
+									.logInfo(
+											logger,
+											"Restarted communication with tracking server and hence turned trackingServerUnavlblBlocked=%s",
+											trackingServerUnavlblBlocked);
 						}
 					}
 					lastUpdateTime = System.currentTimeMillis();
 					synchronized (updateThreadMonitorObj) {
 						updateThreadMonitorObj.wait(NodeProps.HEARTBEAT_INTERVAL);
 					}
-				} while (true);
-			} catch (Exception e) {
-				logger.error("Could not contact TrackigServer from the Update thread need to BLOCk", e);
-				Node.this.trackingServerUnavlblBlock();
-				/*
-				 * this will block anyone else from entering the server but we
-				 * still need to poke the tracking server so this command needs
-				 * to toggle the tracking server block once we are able to
-				 * communicate with it again
-				 */
-			}
+				} catch (Exception e) {
+					logger.error("Could not contact TrackigServer from the Update thread need to BLOCk", e);
+					Node.this.trackingServerUnavlblBlock();
+					/*
+					 * this will block anyone else from entering the server but
+					 * we still need to poke the tracking server so this command
+					 * needs to toggle the tracking server block once we are
+					 * able to communicate with it again
+					 */
+				}
+			} while (true);
 
 		}
-
 	}
 
 	private class UnfinishedDownloadTaskMonitor extends Thread {
