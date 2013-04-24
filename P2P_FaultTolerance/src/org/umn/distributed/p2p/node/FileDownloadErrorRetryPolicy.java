@@ -13,7 +13,14 @@ public class FileDownloadErrorRetryPolicy implements DownloadRetryPolicy {
 		LoggingUtils.logInfo(log, "taskToRetry = %s; fileDwnldErrors=%s", taskToRetry, fileDwnldErrors);
 		if (fileDwnldErrors != null && fileDwnldErrors < NodeProps.MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE) {
 			return true;
+		} else if(allPeersFailed(fileDwnldErrors)){
+			return true;
 		}
+		return false;
+	}
+
+	private boolean allPeersFailed(Integer fileDwnldErrors) {
+		// TODO Auto-generated method stub
 		return false;
 	}
 

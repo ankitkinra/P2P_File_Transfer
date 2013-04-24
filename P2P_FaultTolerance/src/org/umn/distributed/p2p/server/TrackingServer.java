@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -26,9 +27,14 @@ public class TrackingServer extends BasicServer {
 	protected boolean removeFailedPeers = false;
 	public static final String SERVER_PROPERTIES_FILE_NAME = "server.properties";
 	private static boolean testCodeLocal = false;
+	private static AtomicBoolean objectCreated = new AtomicBoolean(false);
 
 	protected TrackingServer(int port, int numTreads) {
 		super(port, numTreads);
+		boolean gotTheLock = objectCreated.compareAndSet(false, true);
+		if (!gotTheLock) {
+			throw new IllegalStateException("Already one Tracking server created, cannot have more.");
+		}
 	}
 
 	protected boolean addFile(String fileName, Machine machine) {

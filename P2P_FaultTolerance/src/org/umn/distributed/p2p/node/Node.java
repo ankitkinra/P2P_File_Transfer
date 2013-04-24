@@ -441,12 +441,12 @@ public class Node extends BasicServer {
 
 	}
 
-	private List<String> getFilesFromTheWatchedDirectory(long lastUpdateTime) {
+	private List<String> getFilesFromTheWatchedDirectory(long lastUpdateTime, boolean sendCompleteList) {
 		List<String> listOfFiles = new ArrayList<String>();
 		File dir = new File(directoryToWatchAndSave);
 		File[] fileListing = dir.listFiles();
 		for (File f : fileListing) {
-			if (f.lastModified() > lastUpdateTime) {
+			if (sendCompleteList || (f.lastModified() > lastUpdateTime)) {
 				listOfFiles.add(f.getName());
 			}
 		}
@@ -534,28 +534,40 @@ public class Node extends BasicServer {
 
 	private class UpdateTrackingServer extends Thread {
 		private long lastUpdateTime = 0;
+		private boolean sendCompleteStatusOnNextAttempt = false;
 
 		@Override
 		public void run() {
 
 			do {
 				try {
-					List<String> fileNamesToSend = getFilesFromTheWatchedDirectory(lastUpdateTime);
+					List<String> fileNamesToSend = getFilesFromTheWatchedDirectory(lastUpdateTime,
+							sendCompleteStatusOnNextAttempt);
+					sendCompleteStatusOnNextAttempt = false;
 					if (fileNamesToSend.size() > 0 || trackingServerUnavlblBlocked) {
 						calculateAndAddChecksums(fileNamesToSend);
 						updateFileList(FILES_UPDATE_MESSAGE_TYPE.COMPLETE, fileNamesToSend);
 						if (Node.this.trackingServerUnavlblBlocked) {
 							Node.this.trackingServerUnavlblBlocked = false;
-							LoggingUtils
-									.logInfo(
-											logger,
-											"Restarted communication with tracking server and hence turned trackingServerUnavlblBlocked=%s",
-											trackingServerUnavlblBlocked);
+							sendCompleteStatusOnNextAttempt = true;
+							LoggingUtils.logInfo(logger,
+									"Restarted communication with tracking server and hence turned trackingServerUnavlblBlocked=%s."
+											+ "Also will send the server the entire information again",
+									trackingServerUnavlblBlocked);
 						}
 					}
 					lastUpdateTime = System.currentTimeMillis();
-					synchronized (updateThreadMonitorObj) {
-						updateThreadMonitorObj.wait(NodeProps.HEARTBEAT_INTERVAL);
+					/**
+					 * sendCompleteStatusOnNextAttempt == true, this means that
+					 * we want to update the server as soon as possible with all
+					 * the file information hence we do not wait the heartbeat
+					 * interval. Instead we wait on the object only when we do
+					 * not need to update the server completely.
+					 */
+					if (!sendCompleteStatusOnNextAttempt) {
+						synchronized (updateThreadMonitorObj) {
+							updateThreadMonitorObj.wait(NodeProps.HEARTBEAT_INTERVAL);
+						}
 					}
 				} catch (Exception e) {
 					logger.error("Could not contact TrackigServer from the Update thread need to BLOCk", e);
@@ -572,6 +584,12 @@ public class Node extends BasicServer {
 		}
 	}
 
+	/**
+	 * TODO When peer_unreachable
+	 * 
+	 * @author kinra003
+	 * 
+	 */
 	private class UnfinishedDownloadTaskMonitor extends Thread {
 		@Override
 		public void run() {
@@ -587,9 +605,8 @@ public class Node extends BasicServer {
 						dwnStatus = unfinishedDownloadStatus.poll();
 						if (dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.DONE) {
 							LoggingUtils.logInfo(logger, "Finished download of the task =%s", dwnStatus);
-						} else if (dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.FAILED) {
+						} else if (dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.UNREACHABLE) {
 							LoggingUtils.logInfo(logger, "File=%s could not be downloaded as it is Failed.", dwnStatus);
-						} else if (dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.PEER_UNREACHABLE) {
 							LoggingUtils.logInfo(logger,
 									"File=%s could not be downloaded as peer unreachable, send to server OPTIONAL.",
 									dwnStatus);
@@ -613,7 +630,7 @@ public class Node extends BasicServer {
 			Map<PeerMachine, DOWNLOAD_ACTIVITY> activityStatus = dwnStatus.getPeersToDownloadFrom();
 			List<PeerMachine> machinesToReport = new LinkedList<PeerMachine>();
 			for (Entry<PeerMachine, DOWNLOAD_ACTIVITY> e : activityStatus.entrySet()) {
-				if (e.getValue() == DOWNLOAD_ACTIVITY.PEER_UNREACHABLE) {
+				if (e.getValue() == DOWNLOAD_ACTIVITY.UNREACHABLE) {
 					machinesToReport.add(e.getKey());
 				}
 			}

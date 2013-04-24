@@ -9,7 +9,6 @@ public class LatencyCalculator {
 	private static final int IP_PART3_JUMP = 107;
 	private static final int IP_PART4_JUMP = 109;
 	private static final int IP_PORT_JUMP = 101;
-	
 
 	/**
 	 * @param args
@@ -64,7 +63,7 @@ public class LatencyCalculator {
 			latency += (this.part4 - ip2.part4) * IP_PART4_JUMP;
 			latency += (this.port - ip2.port) * IP_PORT_JUMP;
 			latency = Math.abs(latency);
-			latency = (latency % 20) +1;
+			latency = (latency % 50) + 1; // latency between 100 - 5000
 			latency = latency * 100;
 			return latency;
 		}
