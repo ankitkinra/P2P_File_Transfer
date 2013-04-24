@@ -11,12 +11,48 @@ import java.net.ServerSocket;
 import java.net.SocketException;
 import java.security.MessageDigest;
 import java.util.Enumeration;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import org.apache.log4j.Logger;
 import org.umn.distributed.p2p.server.ServerProps;
 
+/**
+ * IPAddress verification idea from
+ * 
+ * <pre>
+ * http://www.java2s.com/Code/Java/Network-Protocol/DetermineifthegivenstringisavalidIPv4orIPv6address.htm
+ * </pre>
+ * 
+ * @author akinra
+ * 
+ */
 public class Utils {
 	private static Logger logger = Logger.getLogger(Utils.class);
+	private static Pattern VALID_IPV4_PATTERN = null;
+	private static Pattern VALID_IPV6_PATTERN = null;
+	private static final String IPV4_PATTERN = "(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])";
+	private static final String IPV6_PATTERN = "([0-9a-f]{1,4}:){7}([0-9a-f]){1,4}";
+
+	static {
+		try {
+			VALID_IPV4_PATTERN = Pattern.compile(IPV4_PATTERN, Pattern.CASE_INSENSITIVE);
+			VALID_IPV6_PATTERN = Pattern.compile(IPV6_PATTERN, Pattern.CASE_INSENSITIVE);
+		} catch (PatternSyntaxException e) {
+			logger.error("Unable to compile pattern", e);
+		}
+	}
+
+	public static boolean isIPV4Address(String ipAddress) {
+		Matcher m1 = VALID_IPV4_PATTERN.matcher(ipAddress);
+		return m1.matches();
+	}
+
+	public static boolean isIPV6Address(String ipAddress) {
+		Matcher m2 = VALID_IPV6_PATTERN.matcher(ipAddress);
+		return m2.matches();
+	}
 
 	private static String myIP = null;
 

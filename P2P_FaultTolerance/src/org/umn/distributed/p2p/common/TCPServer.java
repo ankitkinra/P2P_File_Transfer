@@ -119,14 +119,15 @@ public class TCPServer implements Runnable {
 					delegate.handleRequest(buffer, socketOutput);
 				} else {
 					buffer = delegate.handleRequest(buffer);
+					if (logger.isDebugEnabled()) {
+						logger.debug("Data returned to client :" + Utils.byteToString(buffer));
+						// other section will write on its own we just need to close
+						// the stream
+						socket.getOutputStream().write(buffer);
+					}
 				}
 
-				if (logger.isDebugEnabled()) {
-					logger.debug("Data returned to client :" + Utils.byteToString(buffer));
-					// other section will write on its own we just need to close
-					// the stream
-					socket.getOutputStream().write(buffer);
-				}
+				
 
 				bos.close();
 				// TODO:add specific handling for different exceptions types

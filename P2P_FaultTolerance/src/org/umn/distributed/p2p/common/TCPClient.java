@@ -8,44 +8,38 @@ import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.Random;
 
 import org.apache.log4j.Logger;
-import org.umn.distributed.p2p.server.ServerProps;
+import org.umn.distributed.p2p.node.LatencyCalculator;
 
 public class TCPClient {
 	protected static Logger logger = Logger.getLogger(TCPClient.class);
-	private static Random randomDelay = new Random();
 
-	public static byte[] sendData(Machine remoteMachine, byte[] data) throws IOException {
+	public static byte[] sendData(Machine remoteMachine, Machine ownMachine, byte[] data) throws IOException {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Send " + Utils.byteToString(data) + " to " + remoteMachine);
 		}
-		// Adding a random delay
-		int maxDelay = ServerProps.maxPseudoNetworkDelay;
-		if (maxDelay < 1) {
-			maxDelay = ClientProps.maxPseudoNetworkDelay;
+
+		long delay = LatencyCalculator.calculateLatency(ownMachine, remoteMachine);
+		try {
+			LoggingUtils.logInfo(logger, "Introducing the latency =%s between peers = %s and %s", delay, ownMachine,
+					remoteMachine);
+			Thread.sleep(delay);
+		} catch (InterruptedException e) {
+			LoggingUtils.logError(logger, e, "Error while waiting by thread = %s", Thread.currentThread().getName());
 		}
-		/*
-		 * long delay = randomDelay.nextInt(maxDelay); try {
-		 * Thread.sleep(delay); } catch (InterruptedException e) {
-		 * LoggingUtils.logError(logger, e,
-		 * "Error while waiting by thread = %s",
-		 * Thread.currentThread().getName()); }
-		 */
+
 		/**
 		 * This will open a local socket and send the data to the remoteMachine
 		 */
 		Socket clientSocket = null;
-		int buffSize = 1024;
+		int buffSize = SharedConstants.DEFAULT_BUFFER_LENGTH;
 		int count = 0;
 		InputStream is = null;
 		byte[] buffer = new byte[buffSize];
 		byte[] outputBuffer = null;
 		try {
 			clientSocket = new Socket(remoteMachine.getIP(), remoteMachine.getPort());
-			// TODO: add a timeout here to handle the writer thread waiting in
-			// the execution
 			clientSocket.getOutputStream().write(data);
 			clientSocket.getOutputStream().flush();
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -77,34 +71,30 @@ public class TCPClient {
 		return outputBuffer;
 	}
 
-	public static byte[] sendDataGetFile(Machine remoteMachine, byte[] data, String fileWriteLocation)
-			throws IOException {
+	public static byte[] sendDataGetFile(Machine remoteMachine, Machine ownMachine, byte[] data,
+			String fileWriteLocation) throws IOException {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Send " + Utils.byteToString(data) + " to " + remoteMachine);
 		}
-		// Adding a random delay
-		int maxDelay = ServerProps.maxPseudoNetworkDelay;
-		if (maxDelay < 1) {
-			maxDelay = ClientProps.maxPseudoNetworkDelay;
+
+		long delay = LatencyCalculator.calculateLatency(ownMachine, remoteMachine);
+		try {
+			LoggingUtils.logInfo(logger, "Introducing the latency =%s between peers = %s and %s", delay, ownMachine,
+					remoteMachine);
+			Thread.sleep(delay);
+		} catch (InterruptedException e) {
+			LoggingUtils.logError(logger, e, "Error while waiting by thread = %s", Thread.currentThread().getName());
 		}
-		/*
-		 * long delay = randomDelay.nextInt(maxDelay); try {
-		 * Thread.sleep(delay); } catch (InterruptedException e) {
-		 * LoggingUtils.logError(logger, e,
-		 * "Error while waiting by thread = %s",
-		 * Thread.currentThread().getName()); }
-		 */
+
 		/**
 		 * This will open a local socket and send the data to the remoteMachine
 		 */
 		Socket clientSocket = null;
-		int buffSize = 1024;
+		int buffSize = SharedConstants.DEFAULT_BUFFER_LENGTH;
 		int count = 0;
 		InputStream is = null;
 		byte[] buffer = new byte[buffSize];
 		clientSocket = new Socket(remoteMachine.getIP(), remoteMachine.getPort());
-		// TODO: add a timeout here to handle the writer thread waiting in
-		// the execution
 		clientSocket.getOutputStream().write(data);
 		clientSocket.getOutputStream().flush();
 		FileOutputStream fos = null;

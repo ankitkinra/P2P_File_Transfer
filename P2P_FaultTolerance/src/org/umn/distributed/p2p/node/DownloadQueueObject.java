@@ -1,9 +1,7 @@
 package org.umn.distributed.p2p.node;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -12,7 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
@@ -35,7 +32,6 @@ public class DownloadQueueObject implements Runnable {
 	private Queue<DownloadQueueObject> failedTaskQRef = null;
 	private Logger logger = Logger.getLogger(getClass());
 	private String nodeSpecificOutputFolder = null;
-	private Random r = new Random();
 	private AtomicInteger activeDownloadCount;
 	private Map<PeerMachine, DOWNLOAD_ACTIVITY> peerDownloadStatus;
 	private Object updateThreadMonitorObj;
@@ -102,7 +98,11 @@ public class DownloadQueueObject implements Runnable {
 		this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.STARTED);
 		for (PeerMachine m : this.peersToDownloadFrom) {
 			if (!this.failedMachines.contains(m)) {
-				downloadFileFromPeer(this.dwnldStatus.getFileToDownload(), m);
+				try {
+					downloadFileFromPeer(this.dwnldStatus.getFileToDownload(), m);
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
 			}
 			if (this.dwnldStatus.getDownloadActivityStatus().equals(DOWNLOAD_ACTIVITY.DONE)) {
 				synchronized (this.updateThreadMonitorObj) {
@@ -121,7 +121,7 @@ public class DownloadQueueObject implements Runnable {
 		}
 	}
 
-	private void downloadFileFromPeer(String fileToDownload2, PeerMachine m) {
+	private void downloadFileFromPeer(String fileToDownload2, PeerMachine m) throws Exception {
 		LoggingUtils.logInfo(logger, "starting download of file=%s from peer = %s",
 				this.dwnldStatus.getFileToDownload(), m);
 		this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.STARTED);
@@ -140,17 +140,17 @@ public class DownloadQueueObject implements Runnable {
 			int counter = 0;
 			while (true) {
 				counter++;
-				downloadedFileChecksum = TCPClient.sendDataGetFile(m,
-						Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING),
-						this.nodeSpecificOutputFolder + this.dwnldStatus.getFileToDownload());
-				if (verifyFile(this.dwnldStatus.getFileToDownload(), m, downloadedFileChecksum)) {
+				String fileToDownloadAt = this.nodeSpecificOutputFolder + this.dwnldStatus.getFileToDownload();
+				downloadedFileChecksum = TCPClient.sendDataGetFile(m, myMachineInfo,
+						Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING), fileToDownloadAt);
+				if (verifyFile(this.dwnldStatus.getFileToDownload(), m, downloadedFileChecksum, fileToDownloadAt)) {
 					// if correct stop and finish
 					this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.DONE);
 					LoggingUtils.logDebug(logger, "Downloaded file =%s from the peer=%s correctly", fileToDownload2, m);
 					break;
 				} else {
 					// increment the error count
-					deleteFile(this.nodeSpecificOutputFolder + this.dwnldStatus.getFileToDownload());
+					deleteFile(fileToDownloadAt);
 					downloadErrorMap.put(DOWNLOAD_ERRORS.FILE_CORRUPT,
 							downloadErrorMap.get(DOWNLOAD_ERRORS.FILE_CORRUPT) + 1);
 					LoggingUtils.logInfo(logger, "file = %s failed transfer, as data corrupt.; downloadErrorMap=%s",
@@ -192,7 +192,8 @@ public class DownloadQueueObject implements Runnable {
 		f.delete();
 	}
 
-	private boolean verifyFile(String filenameDownloaded, Machine peerDownloadedFrom, byte[] fileDownloadedChecksum) {
+	private boolean verifyFile(String filenameDownloaded, Machine peerDownloadedFrom, byte[] fileDownloadedChecksum,
+			String fileToDownloadAt) throws Exception {
 		LoggingUtils.logDebug(logger,
 				"verification of downloaded file begins. fileName=%s, machine =%s fileDownloadedChecksum=%s",
 				filenameDownloaded, peerDownloadedFrom, fileDownloadedChecksum);
@@ -204,7 +205,7 @@ public class DownloadQueueObject implements Runnable {
 				.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(filenameDownloaded);
 		byte[] checksum = null;
 		try {
-			checksum = TCPClient.sendData(peerDownloadedFrom,
+			checksum = TCPClient.sendData(peerDownloadedFrom, myMachineInfo,
 					Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING));
 		} catch (IOException e) {
 			LoggingUtils.logError(logger, e, "Error in communicating with peer =%s while asking for checksum",
@@ -216,29 +217,6 @@ public class DownloadQueueObject implements Runnable {
 			return false;
 		} else {
 			return Arrays.equals(fileDownloadedChecksum, checksum);
-		}
-
-	}
-
-	private boolean verifyFile2(byte[] fileDownloaded) {
-		int number = r.nextInt(100);
-		return number < 0; // reducing file fail probability
-	}
-
-	private void writeFileToFolder(byte[] fileDownloaded, String fileName) {
-		FileOutputStream out = null;
-		try {
-			out = new FileOutputStream(this.nodeSpecificOutputFolder + fileName);
-			out.write(fileDownloaded);
-			// TODO trigger the udate-the-server-with-files-thread
-		} catch (IOException e) {
-			logger.error("IOException while writing the downloaded file", e);
-		} finally {
-			try {
-				out.close();
-			} catch (IOException e) {
-				logger.error("IOException while writing the downloaded file", e);
-			}
 		}
 
 	}

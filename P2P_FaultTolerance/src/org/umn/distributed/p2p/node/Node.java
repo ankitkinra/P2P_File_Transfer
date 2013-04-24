@@ -211,13 +211,13 @@ public class Node extends BasicServer {
 			fileToSend = new File(fileName);
 			if (fileToSend.isFile() && fileToSend.canRead()) {
 				try {
-
 					FileInputStream fileInputStream = new FileInputStream(fileToSend);
 					int number = 0;
 					LoggingUtils.logInfo(logger, "file = %s to peer =%s;fileToSend = %s", fileName, machineToSend,
 							fileToSend.length());
 
-					while ((number = fileInputStream.read(buffer)) != -1) {
+					while ((number = fileInputStream.read(buffer)) >= 0) {
+
 						socketOutput.write(buffer, 0, number);
 						socketOutput.flush();
 
@@ -268,7 +268,7 @@ public class Node extends BasicServer {
 		}
 		byte[] awqReturn = null;
 		try {
-			awqReturn = TCPClient.sendData(myTrackingServer,
+			awqReturn = TCPClient.sendData(myTrackingServer, myInfo,
 					Utils.stringToByte(findFileMessage.toString(), NodeProps.ENCODING));
 			String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
 			// return expected as ""
@@ -292,8 +292,7 @@ public class Node extends BasicServer {
 		for (String fileName : fileNamesToSend) {
 			// as the file has come here maybe it has updated modified
 			byte[] checkSum = Utils.createChecksum(directoryToWatchAndSave + fileName);
-			LoggingUtils.logDebug(logger, "Created checksum =%s for the File =%s", Arrays.toString(checkSum),
-					fileName);
+			LoggingUtils.logDebug(logger, "Created checksum =%s for the File =%s", Arrays.toString(checkSum), fileName);
 			myFilesAndChecksums.put(fileName, checkSum);
 		}
 
@@ -327,7 +326,8 @@ public class Node extends BasicServer {
 
 		byte[] awqReturn = null;
 		try {
-			awqReturn = TCPClient.sendData(peer, Utils.stringToByte(getLoadMessage.toString(), NodeProps.ENCODING));
+			awqReturn = TCPClient.sendData(peer, myInfo,
+					Utils.stringToByte(getLoadMessage.toString(), NodeProps.ENCODING));
 			String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
 			String[] brokenOnCommandSeparator = Utils.splitCommandIntoFragments(awqStr);
 			if (brokenOnCommandSeparator[0].startsWith(SharedConstants.COMMAND_SUCCESS)) {
@@ -377,7 +377,7 @@ public class Node extends BasicServer {
 
 		byte[] awqReturn = null;
 		try {
-			awqReturn = TCPClient.sendData(myTrackingServer,
+			awqReturn = TCPClient.sendData(myTrackingServer, myInfo,
 					Utils.stringToByte(updateFileListMessage.toString(), NodeProps.ENCODING));
 			String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
 			String[] brokenOnCommandSeparator = awqStr.split(SharedConstants.COMMAND_PARAM_SEPARATOR);
@@ -608,7 +608,7 @@ public class Node extends BasicServer {
 
 		byte[] awqReturn = null;
 		try {
-			awqReturn = TCPClient.sendData(myTrackingServer,
+			awqReturn = TCPClient.sendData(myTrackingServer, myInfo,
 					Utils.stringToByte(failedPeersMessage.toString(), NodeProps.ENCODING));
 			String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
 			// return expected as ""

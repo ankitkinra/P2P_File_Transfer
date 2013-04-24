@@ -1,11 +1,9 @@
 package org.umn.distributed.p2p.node;
 
-import java.util.Arrays;
-
 import org.umn.distributed.p2p.common.Machine;
+import org.umn.distributed.p2p.common.Utils;
 
 public class LatencyCalculator {
-
 	private static final int IP_PART1_JUMP = 100;
 	private static final int IP_PART2_JUMP = 10;
 	private static final int IP_PART3_JUMP = 5;
@@ -18,9 +16,10 @@ public class LatencyCalculator {
 	public static void main(String[] args) {
 		Machine m1 = new Machine("101.2.5.6", 5000);
 		Machine m2 = new Machine("105.4.8.6", 5003);
-		Machine m3 = new Machine("102.3.6.6", 5000);
-		System.out.println(calculateLatency(m1, m3));
-
+		Machine m3 = new Machine("0:0:0:0:0:ffff:6502:506", 5000);
+		Machine m4 = new Machine("0:0:0:0:0:ffff:6902:506", 5000);
+		System.out.println(calculateLatency(m4, m3));
+		System.out.println(calculateLatency(m1, m2));
 	}
 
 	public static int calculateLatency(Machine m1, Machine m2) {
@@ -32,37 +31,107 @@ public class LatencyCalculator {
 		 * Then latency == (A1-A2)*T1 +(B1-B2)*T2 + (C1-C2)*T3 + (D1-D2)*T4 + (P1-P2)*T5
 		 * </pre>
 		 */
-		IPSeparator ip1 = new IPSeparator(m1.getIP());
-		IPSeparator ip2 = new IPSeparator(m2.getIP());
+		IPSeparator ip1 = null;
+		if (Utils.isIPV4Address(m1.getIP())) {
+			// we are good
+			ip1 = new IPSeparatorIPv4(m1.getIP(), m1.getPort());
+		} else if (Utils.isIPV6Address(m1.getIP())) {
+			ip1 = new IPSeparatorIPv6(m1.getIP(), m1.getPort());
+		}
+		
+		System.out.println(ip1);
 
-		return latencyCalc1(ip1, m1.getPort(), ip2, m2.getPort());
+		IPSeparator ip2 = null;
+		if (Utils.isIPV4Address(m2.getIP())) {
+			// we are good
+			ip2 = new IPSeparatorIPv4(m2.getIP(), m2.getPort());
+		} else if (Utils.isIPV6Address(m2.getIP())) {
+			ip2 = new IPSeparatorIPv6(m2.getIP(), m2.getPort());
+		}
+		
+		System.out.println(ip2);
+
+		return ip1.latencyCalc1(ip2);
 	}
 
-	private static int latencyCalc1(IPSeparator ip1, int port1, IPSeparator ip2, int port2) {
-		int latency = (ip1.part1 - ip2.part1) * IP_PART1_JUMP;
-		latency += (ip1.part2 - ip2.part2) * IP_PART2_JUMP;
-		latency += (ip1.part3 - ip2.part3) * IP_PART3_JUMP;
-		latency += (ip1.part4 - ip2.part4) * IP_PART4_JUMP;
-		latency += (port1 - port2) * IP_PORT_JUMP;
-		return Math.abs(latency);
+	private static abstract class IPSeparator {
+		protected int part1;
+		protected int part2;
+		protected int part3;
+		protected int part4;
+		protected int port;
+
+		public abstract int latencyCalc1(IPSeparator ip2);
+
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder();
+			builder.append("IPSeparator [part1=");
+			builder.append(part1);
+			builder.append(", part2=");
+			builder.append(part2);
+			builder.append(", part3=");
+			builder.append(part3);
+			builder.append(", part4=");
+			builder.append(part4);
+			builder.append(", port=");
+			builder.append(port);
+			builder.append("]");
+			return builder.toString();
+		}
+		
+		
+
 	}
 
-	private static class IPSeparator {
-		int part1;
-		int part2;
-		int part3;
-		int part4;
+	private static class IPSeparatorIPv4 extends IPSeparator {
 
-		public IPSeparator(String ipAddress) {
+		public IPSeparatorIPv4(String ipAddress, int port) {
 			String[] ipArr = ipAddress != null ? ipAddress.split("\\.") : null;
 			if (ipArr != null && ipArr.length == 4) {
 				part1 = Integer.parseInt(ipArr[0]);
 				part2 = Integer.parseInt(ipArr[1]);
 				part3 = Integer.parseInt(ipArr[2]);
 				part4 = Integer.parseInt(ipArr[3]);
+				this.port = port;
 			} else {
 				throw new IllegalArgumentException("ipAddress is not correct format, ipAddress=" + ipAddress);
 			}
+		}
+
+		public int latencyCalc1(IPSeparator ip2) {
+			int latency = (this.part1 - ip2.part1) * IP_PART1_JUMP;
+			latency += (this.part2 - ip2.part2) * IP_PART2_JUMP;
+			latency += (this.part3 - ip2.part3) * IP_PART3_JUMP;
+			latency += (this.part4 - ip2.part4) * IP_PART4_JUMP;
+			latency += (this.port - ip2.port) * IP_PORT_JUMP;
+			return Math.abs(latency);
+		}
+	}
+
+	private static class IPSeparatorIPv6 extends IPSeparator {
+
+		public IPSeparatorIPv6(String ipAddress, int port) {
+			String[] ipArr = ipAddress != null ? ipAddress.split(":") : null;
+			if (ipArr != null && ipArr.length == 8) {
+				// adding two 16 bit numbers and then assigning them to part
+				part1 = Integer.parseInt(ipArr[4],16);
+				part2 = Integer.parseInt(ipArr[5],16);
+				part3 = Integer.parseInt(ipArr[6],16);
+				part4 = Integer.parseInt(ipArr[7],16);
+				this.port = port;
+			} else {
+				throw new IllegalArgumentException("ipAddress is not correct format, ipAddress=" + ipAddress);
+			}
+		}
+
+		public int latencyCalc1(IPSeparator ip2) {
+			int latency = (this.part1 - ip2.part1) * IP_PART1_JUMP;
+			latency += (this.part2 - ip2.part2) * IP_PART2_JUMP;
+			latency += (this.part3 - ip2.part3) * IP_PART3_JUMP;
+			latency += (this.part4 - ip2.part4) * IP_PART4_JUMP;
+			latency += (this.port - ip2.port) * IP_PORT_JUMP;
+			return Math.abs(latency);
 		}
 	}
 
