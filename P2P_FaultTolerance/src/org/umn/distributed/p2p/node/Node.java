@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -58,7 +59,14 @@ public class Node extends BasicServer {
 	private boolean trackingServerUnavlblBlocked = false;
 	private HashMap<String, byte[]> myFilesAndChecksums = new HashMap<String, byte[]>();
 	private double avgTimeToServiceUploadRequest = 0.0;
+	/*
+	 * avgTimeToGetSuccessfulDownload == total time to download a file
+	 * successfully (without retry)/total number of files
+	 */
+	private double avgTimeToGetSuccessfulDownload = 0.0;
 	private long totalUploadRequestHandled = 0;
+	private long totalDownloadRequested = 0;
+	private HashMap<String, HashSet<Machine>> filesServersCache = new HashMap<String, HashSet<Machine>>();
 
 	private void initLatencyMap() throws IOException {
 		if (latencyNumbers.size() == 0) {
@@ -221,6 +229,15 @@ public class Node extends BasicServer {
 		return avgTimeToServiceUploadRequest;
 	}
 
+	private synchronized double updateAverageTimeToDownloadFile(long timeToServiceRequest) {
+		long finishedDownloads = totalDownloadRequested;
+		totalDownloadRequested++;
+		double denominator = finishedDownloads + 1.0;
+		avgTimeToGetSuccessfulDownload = avgTimeToGetSuccessfulDownload * (finishedDownloads / denominator)
+				+ timeToServiceRequest / denominator;
+		return avgTimeToGetSuccessfulDownload;
+	}
+
 	private void uploadFile(String fileName, Machine machineToSend, OutputStream socketOutput) {
 		LoggingUtils.logInfo(logger, "Starting upload of file = %s to peer =%s", fileName, machineToSend);
 		currentUploads.incrementAndGet();
@@ -254,6 +271,11 @@ public class Node extends BasicServer {
 				} catch (IOException e) {
 					LoggingUtils.logError(logger, e, "IOException while tranferring file File=%s ", fileName);
 				}
+			} else {
+				// file not found or is unreadable
+				LoggingUtils.logInfo(logger, "FileNotFound;file = %s not found hence did not transfer peer =%s",
+						fileName, machineToSend);
+				socketOutput.write(SharedConstants.FILE_NOT_FOUND);
 			}
 		} catch (Exception e) {
 			LoggingUtils.logError(logger, e, "Exception while tranferring file File=%s ", fileName);
@@ -275,7 +297,19 @@ public class Node extends BasicServer {
 	 */
 	public List<Machine> findFileOnTracker(String fileName, List<PeerMachine> failedPeers) throws IOException {
 		List<Machine> foundPeers = null;
-		checkIfBlockedAndAct("findFileOnTracker, findFile=" + fileName);
+		if (this.trackingServerUnavlblBlocked) {
+			if (NodeProps.enableFileLocationCacheLookup) {
+				//
+				foundPeers = new LinkedList<Machine>();
+				Collection<? extends Machine> existingPeers = getPeersFromCache(fileName);
+				if (existingPeers != null) {
+					foundPeers.addAll(existingPeers);
+				}
+				return foundPeers;
+			} else {
+				checkIfBlockedAndAct("findFileOnTracker, findFile=" + fileName);
+			}
+		}
 		StringBuilder findFileMessage = new StringBuilder(SharedConstants.NODE_REQUEST_TO_SERVER.FIND.name());
 		findFileMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(fileName);
 		findFileMessage.append(SharedConstants.COMMAND_PARAM_SEPARATOR).append("FAILED_SERVERS")
@@ -296,6 +330,9 @@ public class Node extends BasicServer {
 				LoggingUtils.logInfo(logger, "peers =%s found for file=%s", brokenOnCommandSeparator[1], fileName);
 				foundPeers = Machine.parseList(brokenOnCommandSeparator[1]);
 			}
+			if (foundPeers != null && foundPeers.size() > 0) {
+				updateFileServerCache(fileName, foundPeers);
+			}
 		} catch (IOException e) {
 			// if connection breaks, it means we need to block on the tracking
 			// server
@@ -305,6 +342,23 @@ public class Node extends BasicServer {
 		}
 
 		return foundPeers;
+	}
+
+	private synchronized Collection<? extends Machine> getPeersFromCache(String fileName) {
+		return this.filesServersCache.get(fileName);
+
+	}
+
+	private synchronized void updateFileServerCache(String fileName, List<Machine> foundPeers) {
+		HashSet<Machine> existingPeersForFile = this.filesServersCache.get(fileName);
+		if (existingPeersForFile == null) {
+			existingPeersForFile = new HashSet<Machine>();
+		}
+		for (Machine m : foundPeers) {
+			existingPeersForFile.add(m);
+		}
+		this.filesServersCache.put(fileName, existingPeersForFile);
+
 	}
 
 	private void calculateAndAddChecksums(List<String> fileNamesToSend) throws Exception {
@@ -605,6 +659,14 @@ public class Node extends BasicServer {
 						dwnStatus = unfinishedDownloadStatus.poll();
 						if (dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.DONE) {
 							LoggingUtils.logInfo(logger, "Finished download of the task =%s", dwnStatus);
+							// TODO Update the avgTimeToDownloadFile
+							if (dwnStatus.getEndTimeOfDownloadFile() != SharedConstants.FILE_FAILED_TIME) {
+								// skip this time as the file was not downloaded
+								// correctly
+								updateAverageTimeToDownloadFile(dwnStatus.getEndTimeOfDownloadFile()
+										- dwnStatus.getStartTimeOfDownloadFile());
+
+							}
 						} else if (dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.UNREACHABLE) {
 							LoggingUtils.logInfo(logger, "File=%s could not be downloaded as it is Failed.", dwnStatus);
 							LoggingUtils.logInfo(logger,

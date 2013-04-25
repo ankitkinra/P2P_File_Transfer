@@ -14,6 +14,9 @@ public class SharedConstants {
 	public static final String COMMAND_LIST_STARTER = "[";
 	public static final String COMMAND_LIST_END = "]";
 	public static final int DEFAULT_BUFFER_LENGTH = 1024;
+	public static final long FILE_FAILED_TIME = -1;
+	public static final String MESSAGE_DIGEST_NAME = "MD5";
+	public static final byte[] FILE_NOT_FOUND = Utils.stringToByte("FILE_NOT_FOUND");
 
 	public static enum NODE_REQUEST_TO_SERVER {
 		FILE_LIST, ADDED_FILE_LIST, FIND, FAILED_PEERS;

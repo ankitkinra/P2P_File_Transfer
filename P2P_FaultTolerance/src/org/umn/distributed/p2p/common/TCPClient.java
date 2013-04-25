@@ -1,6 +1,7 @@
 package org.umn.distributed.p2p.common;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -98,18 +99,31 @@ public class TCPClient {
 		clientSocket.getOutputStream().write(data);
 		clientSocket.getOutputStream().flush();
 		FileOutputStream fos = null;
-
-		MessageDigest md5Digest = null;
+		int bufferCounter = 0;
+		MessageDigest digest = null;
 		try {
-			md5Digest = MessageDigest.getInstance("MD5");
+			digest = MessageDigest.getInstance(SharedConstants.MESSAGE_DIGEST_NAME);
 			is = clientSocket.getInputStream();
 			fos = new FileOutputStream(fileWriteLocation);
 			count = 0;
+			/*
+			 * TODO If the first buffer is zero length then does that mean that
+			 * the file was not present
+			 */
 			while ((count = is.read(buffer)) >= 0) {
+				if (bufferCounter == 0) {
+					if (Arrays.equals(buffer, SharedConstants.FILE_NOT_FOUND)) {
+						throw new FileNotFoundException(String.format("The file =%s was not found on the peer =%s",
+								fileWriteLocation, remoteMachine));
+					}
+				}
 				fos.write(buffer, 0, count);
-				// calculate the md5 here as well
-				md5Digest.update(buffer, 0, count);
+				// calculate the digest here as well
+				digest.update(buffer, 0, count);
+				bufferCounter++;
+				
 			}
+			
 		} catch (IOException ioe) {
 			logger.error("Error connecting to " + remoteMachine, ioe);
 			throw ioe;
@@ -121,7 +135,7 @@ public class TCPClient {
 			is.close();
 			clientSocket.close();
 		}
-		return md5Digest != null ? md5Digest.digest() : null;
+		return digest != null ? digest.digest() : null;
 
 	}
 }

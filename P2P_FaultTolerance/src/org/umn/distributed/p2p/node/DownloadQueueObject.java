@@ -1,6 +1,7 @@
 package org.umn.distributed.p2p.node;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -109,6 +110,7 @@ public class DownloadQueueObject implements Runnable {
 					}
 				}
 				if (this.dwnldStatus.getDownloadActivityStatus().equals(DOWNLOAD_ACTIVITY.DONE)) {
+					this.dwnldStatus.setEndTimeOfDownloadFile(System.currentTimeMillis());
 					synchronized (this.updateThreadMonitorObj) {
 						this.updateThreadMonitorObj.notifyAll();
 					}
@@ -119,6 +121,7 @@ public class DownloadQueueObject implements Runnable {
 			if (this.failedMachines.size() == this.peersToDownloadFrom.size()) {
 				LoggingUtils.logInfo(logger, "All peers failed, will retry");
 				this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.ALL_PEERS_UNREACHABLE);
+				this.dwnldStatus.setEndTimeOfDownloadFile(SharedConstants.FILE_FAILED_TIME);
 			}
 		} catch (Exception e) {
 			LoggingUtils.logError(logger, e, "Error in downloading of file %s", this.dwnldStatus.getFileToDownload());
@@ -135,6 +138,13 @@ public class DownloadQueueObject implements Runnable {
 		}
 	}
 
+	/**
+	 * TODO add the timeToDownloadFile
+	 * 
+	 * @param fileToDownload2
+	 * @param m
+	 * @throws Exception
+	 */
 	private void downloadFileFromPeer(String fileToDownload2, PeerMachine m) throws Exception {
 		LoggingUtils.logInfo(logger, "starting download of file=%s from peer = %s",
 				this.dwnldStatus.getFileToDownload(), m);
@@ -150,11 +160,11 @@ public class DownloadQueueObject implements Runnable {
 				.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(this.myMachineInfo);
 
 		byte[] downloadedFileChecksum = null;
+		String fileToDownloadAt = this.nodeSpecificOutputFolder + this.dwnldStatus.getFileToDownload();
 		try {
 			int counter = 0;
 			while (true) {
 				counter++;
-				String fileToDownloadAt = this.nodeSpecificOutputFolder + this.dwnldStatus.getFileToDownload();
 				downloadedFileChecksum = TCPClient.sendDataGetFile(m, myMachineInfo,
 						Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING), fileToDownloadAt);
 				if (verifyFile(this.dwnldStatus.getFileToDownload(), m, downloadedFileChecksum, fileToDownloadAt)) {
@@ -185,6 +195,10 @@ public class DownloadQueueObject implements Runnable {
 
 			}
 
+		} catch (FileNotFoundException fe) {
+			LoggingUtils.logError(logger, fe, "File =%s was not found on the peer=%s, maybe update the own cache ",
+					fileToDownload2, m);
+			deleteFile(fileToDownloadAt);
 		} catch (IOException e) {
 			// if connection breaks, this means that this peer is down
 			LoggingUtils.logError(logger, e, "Error in communicating with peer = " + m);

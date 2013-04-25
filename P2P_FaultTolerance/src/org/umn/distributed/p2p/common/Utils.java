@@ -210,7 +210,7 @@ public class Utils {
 		InputStream fis = new FileInputStream(filename);
 
 		byte[] buffer = new byte[1024];
-		MessageDigest complete = MessageDigest.getInstance("MD5");
+		MessageDigest complete = MessageDigest.getInstance(SharedConstants.MESSAGE_DIGEST_NAME);
 		int numRead;
 
 		do {

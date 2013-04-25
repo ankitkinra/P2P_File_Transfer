@@ -16,6 +16,8 @@ public class DownloadStatus {
 	private Map<PeerMachine, DOWNLOAD_ACTIVITY> peersToDownloadFrom;
 	private DOWNLOAD_ACTIVITY downloadActivityStatus = DOWNLOAD_ACTIVITY.NOT_STARTED;
 	private boolean cancelled = false;
+	private long startTimeOfDownloadFile = 0;
+	private long endTimeOfDownloadFile = 0;
 
 	public DownloadStatus(String fileToDownload, List<PeerMachine> peersToDownloadFrom) {
 		super();
@@ -25,6 +27,7 @@ public class DownloadStatus {
 			mapPeerActivity.put(p, DOWNLOAD_ACTIVITY.NOT_STARTED);
 		}
 		this.peersToDownloadFrom = mapPeerActivity;
+		this.startTimeOfDownloadFile = System.currentTimeMillis();
 	}
 
 	public String getFileToDownload() {
@@ -57,6 +60,22 @@ public class DownloadStatus {
 
 	public void setCancelled(boolean cancelled) {
 		this.cancelled = cancelled;
+	}
+
+	public long getEndTimeOfDownloadFile() {
+		return endTimeOfDownloadFile;
+	}
+
+	public void setEndTimeOfDownloadFile(long endTimeOfDownloadFile) {
+		this.endTimeOfDownloadFile = endTimeOfDownloadFile;
+	}
+
+	public int getDownloadId() {
+		return downloadId;
+	}
+
+	public long getStartTimeOfDownloadFile() {
+		return startTimeOfDownloadFile;
 	}
 
 	public static final Comparator<DownloadStatus> DOWNLOAD_STATUS_SORTED_BY_UNFINISHED_STATUS = new Comparator<DownloadStatus>() {
