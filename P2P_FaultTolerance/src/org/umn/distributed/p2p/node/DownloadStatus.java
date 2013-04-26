@@ -8,12 +8,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.umn.distributed.p2p.common.PeerMachine;
 import org.umn.distributed.p2p.node.Constants.DOWNLOAD_ACTIVITY;
+import org.umn.distributed.p2p.node.Constants.PEER_DOWNLOAD_ACTIVITY;
 
 public class DownloadStatus {
 	private static final AtomicInteger downloadIdGenerator = new AtomicInteger(1);
 	private int downloadId = downloadIdGenerator.getAndIncrement();
 	private String fileToDownload;
-	private Map<PeerMachine, DOWNLOAD_ACTIVITY> peersToDownloadFrom;
+	private Map<PeerMachine, PEER_DOWNLOAD_ACTIVITY> peersToDownloadFrom;
 	private DOWNLOAD_ACTIVITY downloadActivityStatus = DOWNLOAD_ACTIVITY.NOT_STARTED;
 	private boolean cancelled = false;
 	private long startTimeOfDownloadFile = 0;
@@ -22,9 +23,9 @@ public class DownloadStatus {
 	public DownloadStatus(String fileToDownload, List<PeerMachine> peersToDownloadFrom) {
 		super();
 		this.fileToDownload = fileToDownload;
-		Map<PeerMachine, DOWNLOAD_ACTIVITY> mapPeerActivity = new HashMap<PeerMachine, Constants.DOWNLOAD_ACTIVITY>();
+		Map<PeerMachine, PEER_DOWNLOAD_ACTIVITY> mapPeerActivity = new HashMap<PeerMachine, PEER_DOWNLOAD_ACTIVITY>();
 		for (PeerMachine p : peersToDownloadFrom) {
-			mapPeerActivity.put(p, DOWNLOAD_ACTIVITY.NOT_STARTED);
+			mapPeerActivity.put(p, PEER_DOWNLOAD_ACTIVITY.NOT_STARTED);
 		}
 		this.peersToDownloadFrom = mapPeerActivity;
 		this.startTimeOfDownloadFile = System.currentTimeMillis();
@@ -38,11 +39,11 @@ public class DownloadStatus {
 		this.fileToDownload = fileToDownload;
 	}
 
-	public Map<PeerMachine, DOWNLOAD_ACTIVITY> getPeersToDownloadFrom() {
+	public Map<PeerMachine, PEER_DOWNLOAD_ACTIVITY> getPeersToDownloadFrom() {
 		return peersToDownloadFrom;
 	}
 
-	public void setPeersToDownloadFrom(Map<PeerMachine, DOWNLOAD_ACTIVITY> peersToDownloadFrom) {
+	public void setPeersToDownloadFrom(Map<PeerMachine, PEER_DOWNLOAD_ACTIVITY> peersToDownloadFrom) {
 		this.peersToDownloadFrom = peersToDownloadFrom;
 	}
 

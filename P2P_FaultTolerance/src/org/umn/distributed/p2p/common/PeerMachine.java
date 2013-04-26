@@ -75,7 +75,8 @@ public class PeerMachine extends Machine {
 		/**
 		 * <code>
 		 * machine.getCurrentLoad() * machine.getAvgTimeToServiceRequest() == probabilistic time when server is free
-		 * </code> 
+		 * </code>
+		 * 
 		 * @param machine
 		 * @return
 		 */

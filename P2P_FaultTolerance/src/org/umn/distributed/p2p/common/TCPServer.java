@@ -58,7 +58,7 @@ public class TCPServer implements Runnable {
 	}
 
 	public void stop() {
-		if(this.serverSocket != null){
+		if (this.serverSocket != null) {
 			logger.debug("Stopping TcpServer on port:" + this.serverSocket);
 			this.running = false;
 			try {
@@ -68,7 +68,7 @@ public class TCPServer implements Runnable {
 			}
 			logger.debug("ServerSocket closed");
 		}
-		
+
 		this.executerService.shutdown();
 		try {
 			if (!this.executerService.awaitTermination(STOP_TIMEOUT, TimeUnit.MILLISECONDS)) {

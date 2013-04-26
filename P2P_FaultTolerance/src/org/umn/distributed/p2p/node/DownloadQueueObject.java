@@ -22,6 +22,7 @@ import org.umn.distributed.p2p.common.TCPClient;
 import org.umn.distributed.p2p.common.Utils;
 import org.umn.distributed.p2p.node.Constants.DOWNLOAD_ACTIVITY;
 import org.umn.distributed.p2p.node.Constants.DOWNLOAD_ERRORS;
+import org.umn.distributed.p2p.node.Constants.PEER_DOWNLOAD_ACTIVITY;
 
 public class DownloadQueueObject implements Runnable {
 	private Machine myMachineInfo = null;
@@ -34,7 +35,7 @@ public class DownloadQueueObject implements Runnable {
 	private Logger logger = Logger.getLogger(getClass());
 	private String nodeSpecificOutputFolder = null;
 	private AtomicInteger activeDownloadCount;
-	private Map<PeerMachine, DOWNLOAD_ACTIVITY> peerDownloadStatus;
+	private Map<PeerMachine, PEER_DOWNLOAD_ACTIVITY> peerDownloadStatus;
 	private Object updateThreadMonitorObj;
 	private DownloadStatus dwnldStatus;
 
@@ -71,7 +72,7 @@ public class DownloadQueueObject implements Runnable {
 		downloadErrorMap.put(DOWNLOAD_ERRORS.PEER_UNREACHABLE, 0);
 	}
 
-	private List<PeerMachine> convertToList(Map<PeerMachine, DOWNLOAD_ACTIVITY> mapPeerMachineDownloadStatus) {
+	private List<PeerMachine> convertToList(Map<PeerMachine, PEER_DOWNLOAD_ACTIVITY> mapPeerMachineDownloadStatus) {
 		List<PeerMachine> peers = new ArrayList<PeerMachine>();
 		for (PeerMachine m : mapPeerMachineDownloadStatus.keySet()) {
 			peers.add(m);
@@ -118,29 +119,31 @@ public class DownloadQueueObject implements Runnable {
 					break;
 				}
 			}
-			if (this.failedMachines.size() == this.peersToDownloadFrom.size()) {
-				LoggingUtils.logInfo(logger, "All peers failed, will retry");
-				this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.ALL_PEERS_UNREACHABLE);
-				this.dwnldStatus.setEndTimeOfDownloadFile(SharedConstants.FILE_FAILED_TIME);
+			if (!this.dwnldStatus.getDownloadActivityStatus().equals(DOWNLOAD_ACTIVITY.DONE)) {
+				if (this.failedMachines.size() == this.peersToDownloadFrom.size()) {
+					LoggingUtils.logInfo(logger, "All peers failed, will retry");
+					this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.ALL_PEERS_UNREACHABLE);
+					this.dwnldStatus.setEndTimeOfDownloadFile(SharedConstants.FILE_FAILED_TIME);
+					failedTaskQRef.add(this);
+				} else {
+					/*
+					 * download did not complete, some peer might be reachable
+					 * but may not have the file or the file might have exceeded
+					 * download tries Either ways we would not like to retry the
+					 * download in this situation
+					 */
+					this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.FAILED);
+					this.dwnldStatus.setEndTimeOfDownloadFile(SharedConstants.FILE_FAILED_TIME);
+				}
+
 			}
-		} catch (Exception e) {
-			LoggingUtils.logError(logger, e, "Error in downloading of file %s", this.dwnldStatus.getFileToDownload());
 		} finally {
+			// no exception needs to be caught
 			this.activeDownloadCount.decrementAndGet();
-		}
-		// file is not downloaded yet, declare failed
-		if (this.dwnldStatus.getDownloadActivityStatus() != DOWNLOAD_ACTIVITY.DONE
-				|| this.dwnldStatus.getDownloadActivityStatus() != DOWNLOAD_ACTIVITY.ALL_PEERS_UNREACHABLE) {
-			LoggingUtils.logInfo(logger, "file=%s cannot be downloaded. The system might retry",
-					this.dwnldStatus.getFileToDownload());
-			this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.UNREACHABLE);
-			failedTaskQRef.add(this); // adding to the retry queue.
 		}
 	}
 
 	/**
-	 * TODO add the timeToDownloadFile
-	 * 
 	 * @param fileToDownload2
 	 * @param m
 	 * @throws Exception
@@ -148,7 +151,7 @@ public class DownloadQueueObject implements Runnable {
 	private void downloadFileFromPeer(String fileToDownload2, PeerMachine m) throws Exception {
 		LoggingUtils.logInfo(logger, "starting download of file=%s from peer = %s",
 				this.dwnldStatus.getFileToDownload(), m);
-		this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.STARTED);
+		this.peerDownloadStatus.put(m, PEER_DOWNLOAD_ACTIVITY.STARTED);
 		int activeCount = this.activeDownloadCount.get();
 		LoggingUtils.logDebug(logger,
 				"Starting the download on the peer = %s for the file =%s and the activeDownloadCount = %s", m,
@@ -187,7 +190,7 @@ public class DownloadQueueObject implements Runnable {
 									"file = %s failed transfer more than %s on the peer = %s, cannot retry, will add peer to failed list",
 									this.dwnldStatus.getFileToDownload(),
 									NodeProps.MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE, m);
-					this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.UNREACHABLE);
+					this.peerDownloadStatus.put(m, PEER_DOWNLOAD_ACTIVITY.UNREACHABLE);
 					// failedMachines.add(m); // Not adding the corrupted
 					// download to the failed list, just move on
 					break;
@@ -204,7 +207,7 @@ public class DownloadQueueObject implements Runnable {
 			LoggingUtils.logError(logger, e, "Error in communicating with peer = " + m);
 			downloadErrorMap.put(DOWNLOAD_ERRORS.PEER_UNREACHABLE,
 					downloadErrorMap.get(DOWNLOAD_ERRORS.PEER_UNREACHABLE) + 1);
-			this.peerDownloadStatus.put(m, DOWNLOAD_ACTIVITY.UNREACHABLE);
+			this.peerDownloadStatus.put(m, PEER_DOWNLOAD_ACTIVITY.UNREACHABLE);
 			LoggingUtils.logInfo(logger, "peer download status= %s;downloadErrorMap=%s", this.peerDownloadStatus,
 					this.downloadErrorMap);
 			failedMachines.add(m);

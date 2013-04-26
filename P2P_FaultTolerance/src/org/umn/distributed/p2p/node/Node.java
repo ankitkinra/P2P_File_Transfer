@@ -32,6 +32,7 @@ import org.umn.distributed.p2p.common.SharedConstants.NODE_REQUEST_TO_NODE;
 import org.umn.distributed.p2p.common.TCPClient;
 import org.umn.distributed.p2p.common.Utils;
 import org.umn.distributed.p2p.node.Constants.DOWNLOAD_ACTIVITY;
+import org.umn.distributed.p2p.node.Constants.PEER_DOWNLOAD_ACTIVITY;
 
 public class Node extends BasicServer {
 	protected Logger logger = Logger.getLogger(this.getClass());
@@ -648,6 +649,13 @@ public class Node extends BasicServer {
 		@Override
 		public void run() {
 			try {
+				/*
+				 * TODO Need to determine what happens to the file which has
+				 * PEER_UNREACHABLE as it will be retried. We also need to
+				 * introduce a counter as to how many times we want that retry
+				 * to be done with the same peer list else we can insert the
+				 * command as a new one using the download functionality
+				 */
 				while (true) {
 					while (!unfinishedDownloadStatus.isEmpty()) {
 						DownloadStatus dwnStatus = unfinishedDownloadStatus.peek();
@@ -667,13 +675,22 @@ public class Node extends BasicServer {
 										- dwnStatus.getStartTimeOfDownloadFile());
 
 							}
-						} else if (dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.UNREACHABLE) {
-							LoggingUtils.logInfo(logger, "File=%s could not be downloaded as it is Failed.", dwnStatus);
-							LoggingUtils.logInfo(logger,
-									"File=%s could not be downloaded as peer unreachable, send to server OPTIONAL.",
-									dwnStatus);
-							sendServerFailedPeerInfo(dwnStatus);
+						} else if (dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.FAILED) {
+							LoggingUtils.logInfo(logger, "Failed download of the task =%s", dwnStatus);
 						}
+						/*
+						 * For the other statuses we might need to remove them
+						 * from this queue as they might be retried
+						 */
+						/*
+						 * even if the file was correctly downloaded there might
+						 * be some unreachable peers
+						 */
+
+						LoggingUtils.logInfo(logger,
+								"Some peers could have been unreachable, send to server OPTIONAL.", dwnStatus);
+						sendServerFailedPeerInfo(dwnStatus);
+
 					}
 					try {
 						Thread.sleep(NodeProps.UNFINISHED_TASK_INTERVAL);
@@ -689,10 +706,10 @@ public class Node extends BasicServer {
 		}
 
 		private void sendServerFailedPeerInfo(DownloadStatus dwnStatus) throws IOException {
-			Map<PeerMachine, DOWNLOAD_ACTIVITY> activityStatus = dwnStatus.getPeersToDownloadFrom();
+			Map<PeerMachine, PEER_DOWNLOAD_ACTIVITY> activityStatus = dwnStatus.getPeersToDownloadFrom();
 			List<PeerMachine> machinesToReport = new LinkedList<PeerMachine>();
-			for (Entry<PeerMachine, DOWNLOAD_ACTIVITY> e : activityStatus.entrySet()) {
-				if (e.getValue() == DOWNLOAD_ACTIVITY.UNREACHABLE) {
+			for (Entry<PeerMachine, PEER_DOWNLOAD_ACTIVITY> e : activityStatus.entrySet()) {
+				if (e.getValue() == PEER_DOWNLOAD_ACTIVITY.UNREACHABLE) {
 					machinesToReport.add(e.getKey());
 				}
 			}

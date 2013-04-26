@@ -121,9 +121,9 @@ public class TCPClient {
 				// calculate the digest here as well
 				digest.update(buffer, 0, count);
 				bufferCounter++;
-				
+
 			}
-			
+
 		} catch (IOException ioe) {
 			logger.error("Error connecting to " + remoteMachine, ioe);
 			throw ioe;
