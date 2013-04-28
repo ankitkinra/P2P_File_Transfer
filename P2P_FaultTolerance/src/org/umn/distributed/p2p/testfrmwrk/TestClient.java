@@ -5,9 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Random;
-import java.util.TreeMap;
 
 import org.apache.log4j.Logger;
 import org.umn.distributed.p2p.common.ClientProps;
@@ -17,6 +15,17 @@ import org.umn.distributed.p2p.common.Utils;
 
 import com.thoughtworks.xstream.XStream;
 
+/**
+ * <pre>
+ * This testClient will launch several peers and then also keep their info in a structure
+ * It will then start firing commands to these nodes using the node object which is saved
+ * It will then ask the server for the all the available files (extra method to enable testing)
+ * Once it gets these files then it will pick files at random and start the testing according to
+ * the xml file
+ * </pre>
+ * @author akinra
+ *
+ */
 public class TestClient {
 	private static final String READ_ITEM_COMMAND_NAME = "readItem";
 	private static final String READ_ITEMS_COMMAND_NAME = "readItems";

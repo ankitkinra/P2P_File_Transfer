@@ -548,17 +548,28 @@ public class Node extends BasicServer {
 			n.start();
 			System.out.println("Starting node =" + n.myInfo);
 			String fileToFind = "big.pdf";
-			List<Machine> machinesWithFile = n.findFileOnTracker(fileToFind, null);
-			if (machinesWithFile != null) {
-				List<PeerMachine> avlblPeers = n.getPeerMachineList(machinesWithFile);
-				n.downloadFileFromPeer(fileToFind, avlblPeers);
-			}
+			n.findAndDownloadFile(fileToFind);
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+
+	}
+
+	public void findAndDownloadFile(String fileToFind) throws IOException {
+		if (Utils.isNotEmpty(fileToFind)) {
+			List<Machine> machinesWithFile = findFileOnTracker(fileToFind, null);
+			if (machinesWithFile != null) {
+				List<PeerMachine> avlblPeers = getPeerMachineList(machinesWithFile);
+				downloadFileFromPeer(fileToFind, avlblPeers);
+				LoggingUtils.logInfo(logger, "Queued the file=%s for download from the following peers=%s", fileToFind,
+						avlblPeers);
+			}
+		} else {
+			LoggingUtils.logInfo(logger, "file=%s came as empty", fileToFind);
 		}
 
 	}
