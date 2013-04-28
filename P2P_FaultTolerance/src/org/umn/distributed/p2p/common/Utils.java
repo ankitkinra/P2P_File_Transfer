@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 import org.apache.log4j.Logger;
+import org.umn.distributed.p2p.node.NodeProps;
 import org.umn.distributed.p2p.server.ServerProps;
 
 /**
@@ -157,7 +158,7 @@ public class Utils {
 	public static byte[] stringToByte(String str) {
 		String encoding = ServerProps.ENCODING;
 		if (ServerProps.ENCODING == null) {
-			encoding = ClientProps.ENCODING;
+			encoding = NodeProps.ENCODING;
 		}
 		return stringToByte(str, encoding);
 	}
@@ -178,7 +179,7 @@ public class Utils {
 	public static String byteToString(byte[] data) {
 		String encoding = ServerProps.ENCODING;
 		if (ServerProps.ENCODING == null) {
-			encoding = ClientProps.ENCODING;
+			encoding = NodeProps.ENCODING;
 		}
 		return byteToString(data, encoding);
 	}

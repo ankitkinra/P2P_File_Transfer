@@ -5,58 +5,77 @@
 			<operations>
 				<operation>
 					<sno>1</sno>
-					<!-- getFileList would need to hit the server which it will get from command line -->
-					<name>getFileList</name>
-				</operation>
-				<operation>
-					<sno>2</sno>
 					<!-- launchPeers would launch so many peers -->
 					<name>launchPeers</name>
 					<params>
 						<entry>
 							<string>numberOfPeers</string>
+							<string>5</string>
+						</entry>
+						<entry>
+							<string>numThreads</string>
 							<string>10</string>
+						</entry>
+						<entry>
+							<string>dirToWatch</string>
+							<string>D:\\p2p\\peers\\</string>
 						</entry>
 					</params>
 				</operation>
 				<operation>
-					<sno>3</sno>
-					<!--  this will download a random file on a random peer -->
+					<sno>2</sno>
+					<!-- this will download a particular file on a random/particular peer -->
 					<name>downloadFile</name>
-					<repeatations>10</repeatations>
-				</operation>
-				<operation>
-					<sno>4</sno>
-					<!--  this will download a particular file on a random/particular peer -->
-					<name>downloadFileNode</name>
 					<params>
 						<entry>
 							<string>machineId</string>
 							<string>1</string>
 						</entry>
 						<entry>
-							<string>file</string>
-							<string>test1.txt</string>
-						</entry>
-						<entry>
-							<string>file</string>
-							<string>test2.txt</string>
-						</entry>
-						<entry>
-							<string>file</string>
-							<string>test3.txt</string>
+							<string>filesToDownload</string>
+							<string>5</string>
 						</entry>
 					</params>
 				</operation>
 				<operation>
 					<sno>3</sno>
-					<name>readItem</name>
+					<!-- this will download a particular file on a random/particular peer -->
+					<name>downloadFile</name>
 					<params>
 						<entry>
-							<string>id</string>
+							<string>machineId</string>
 							<string>2</string>
 						</entry>
-
+						<entry>
+							<string>filesToDownload</string>
+							<string>5</string>
+						</entry>
+					</params>
+				</operation>
+				<operation>
+					<sno>4</sno>
+					<!-- this will download a particular file on a random/particular peer -->
+					<name>downloadFile</name>
+					<params>
+						<entry>
+							<string>machineId</string>
+							<string>3</string>
+						</entry>
+						<entry>
+							<string>filesToDownload</string>
+							<string>5</string>
+						</entry>
+					</params>
+				</operation>
+				<operation>
+					<sno>5</sno>
+					<!-- this will download a particular file on a random/particular peer -->
+					<name>downloadFileRandom</name>
+					<params>
+						<entry>
+							<string>individualDownloadsToBegin</string>
+							<string>5</string>
+						</entry>
 					</params>
 				</operation>
 			</operations>

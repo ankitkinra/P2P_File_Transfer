@@ -91,8 +91,7 @@ public class DownloadService {
 				try {
 					Thread.sleep(NodeProps.FAILED_TASK_RETRY_INTERVAL);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					// eat exception
 				}
 				int counter = 0;
 				while (!failedTaskQ.isEmpty()) {

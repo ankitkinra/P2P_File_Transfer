@@ -6,7 +6,7 @@ import java.util.HashSet;
 
 import org.apache.log4j.Logger;
 
-public abstract class BasicServer implements TcpServerDelegate {
+public abstract class BasicServer extends Thread implements TcpServerDelegate {
 	protected Logger logger = Logger.getLogger(this.getClass());
 	private TCPServer tcpServer;
 	protected int port;
@@ -22,22 +22,22 @@ public abstract class BasicServer implements TcpServerDelegate {
 		this(port, numTreads, null);
 	}
 
-	public void start() throws Exception {
+	public void run(){
 		logger.info("****************Starting Tracking Server****************");
 		try {
 			this.port = this.tcpServer.startListening(this.port);
 			LoggingUtils.logInfo(logger, "Started server, myInfo=%s", myInfo);
-			startSpecific();
+			intializeSpecific();
 		} catch (IOException ioe) {
 			logger.error("Error starting tcp server. Stopping now", ioe);
-			this.stop();
-			throw ioe;
+			this.shutdown();
+			throw new RuntimeException(ioe);
 		}
 	}
 
-	public void stop() {
+	public void shutdown() {
 		this.tcpServer.stop();
-		stopSpecific();
+		shutdownSpecific();
 	}
 
 	@Override
@@ -70,8 +70,8 @@ public abstract class BasicServer implements TcpServerDelegate {
 
 	protected abstract byte[] handleSpecificRequest(String message);
 
-	protected abstract void stopSpecific();
+	protected abstract void shutdownSpecific();
 
-	protected abstract void startSpecific();
+	protected abstract void intializeSpecific();
 
 }

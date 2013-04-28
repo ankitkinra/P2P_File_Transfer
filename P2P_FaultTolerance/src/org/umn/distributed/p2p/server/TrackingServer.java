@@ -31,6 +31,7 @@ public class TrackingServer extends BasicServer {
 
 	protected TrackingServer(int port, int numTreads) {
 		super(port, numTreads);
+		LoggingUtils.logInfo(logger, "objectCreated=%s", objectCreated);
 		boolean gotTheLock = objectCreated.compareAndSet(false, true);
 		if (!gotTheLock) {
 			throw new IllegalStateException("Already one Tracking server created, cannot have more.");
@@ -156,7 +157,9 @@ public class TrackingServer extends BasicServer {
 		 * (FAILED_PEERS=[M1][M2]) Need to find all the peers serving this file
 		 */
 		String[] commandFragments = Utils.getKeyAndValuefromFragment(request);
-		removeFailedPeers(commandFragments[1]);
+		if(commandFragments.length > 0){
+			removeFailedPeers(commandFragments[1]);
+		}
 
 	}
 
@@ -277,8 +280,6 @@ public class TrackingServer extends BasicServer {
 				String serverPropertyFileName = args[0];
 				ServerProps.loadProperties(serverPropertyFileName);
 				int port = 0;
-				ts = new TrackingServer(Utils.findFreePort(ServerProps.SERVER_STARTING_PORT),
-						ServerProps.INTERNAL_SERVER_THREADS);
 				if (args.length == 2) {
 					try {
 						port = Integer.parseInt(args[1]);
@@ -295,8 +296,7 @@ public class TrackingServer extends BasicServer {
 				} else {
 					port = Utils.findFreePort(ServerProps.SERVER_STARTING_PORT);
 				}
-				ts = new TrackingServer(Utils.findFreePort(ServerProps.SERVER_STARTING_PORT),
-						ServerProps.INTERNAL_SERVER_THREADS);
+				ts = new TrackingServer(port, ServerProps.INTERNAL_SERVER_THREADS);
 				try {
 					ts.start();
 				} catch (Exception e) {
@@ -381,13 +381,13 @@ public class TrackingServer extends BasicServer {
 	}
 
 	@Override
-	protected void stopSpecific() {
+	protected void shutdownSpecific() {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	protected void startSpecific() {
+	protected void intializeSpecific() {
 		// TODO Auto-generated method stub
 
 	}

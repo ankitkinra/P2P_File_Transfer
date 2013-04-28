@@ -17,8 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.PriorityQueue;
-import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
@@ -55,8 +53,9 @@ public class Node extends BasicServer {
 	private Comparator<DownloadQueueObject> downloadPriorityAssignment = null;
 	private final DownloadService downloadService;
 	private static HashSet<String> commandsWhoHandleOwnOutput = getCommandsWhoHandleTheirOutput();
-	private static Map<LatencyObj, Integer> latencyNumbers = new HashMap<LatencyObj, Integer>();
-	private static Set<Integer> latencyMachinesId = new HashSet<Integer>();
+	// private static Map<LatencyObj, Integer> latencyNumbers = new
+	// HashMap<LatencyObj, Integer>();
+	// private static Set<Integer> latencyMachinesId = new HashSet<Integer>();
 	private boolean trackingServerUnavlblBlocked = false;
 	private HashMap<String, byte[]> myFilesAndChecksums = new HashMap<String, byte[]>();
 	private double avgTimeToServiceUploadRequest = 0.0;
@@ -69,50 +68,49 @@ public class Node extends BasicServer {
 	private long totalDownloadRequested = 0;
 	private HashMap<String, HashSet<Machine>> filesServersCache = new HashMap<String, HashSet<Machine>>();
 
-	private void initLatencyMap() throws IOException {
-		if (latencyNumbers.size() == 0) {
-			// get the latency file and add the entries
-
-			Properties prop = new Properties();
-			try {
-				prop.load(new FileInputStream(NodeProps.DEFAULT_LATENCY_FILE));
-				for (Entry<Object, Object> entry : prop.entrySet()) {
-					List<Machine> machines = Machine.parseList(entry.getKey().toString());
-					LatencyObj o = new LatencyObj(machines.get(0), machines.get(1));
-					latencyMachinesId.add(machines.get(0).getMachineId());
-					latencyNumbers.put(o, Integer.parseInt(entry.getValue().toString()));
-					latencyNumbers.put(o.reverseMachines(), Integer.parseInt(entry.getValue().toString()));
-				}
-
-			} catch (IOException ex) {
-				throw ex;
-			}
-			LoggingUtils.logInfo(logger, "latencyNumbers=%s after population", latencyNumbers);
-
-		}
-	}
+	/*
+	 * private void initLatencyMap() throws IOException { if
+	 * (latencyNumbers.size() == 0) { // get the latency file and add the
+	 * entries
+	 * 
+	 * Properties prop = new Properties(); try { prop.load(new
+	 * FileInputStream(NodeProps.DEFAULT_LATENCY_FILE)); for (Entry<Object,
+	 * Object> entry : prop.entrySet()) { List<Machine> machines =
+	 * Machine.parseList(entry.getKey().toString()); LatencyObj o = new
+	 * LatencyObj(machines.get(0), machines.get(1));
+	 * latencyMachinesId.add(machines.get(0).getMachineId());
+	 * latencyNumbers.put(o, Integer.parseInt(entry.getValue().toString()));
+	 * latencyNumbers.put(o.reverseMachines(),
+	 * Integer.parseInt(entry.getValue().toString())); }
+	 * 
+	 * } catch (IOException ex) { throw ex; } LoggingUtils.logInfo(logger,
+	 * "latencyNumbers=%s after population", latencyNumbers);
+	 * 
+	 * } }
+	 */
 
 	private int getLatency(Machine otherMachine) {
-		LatencyObj obj1 = new LatencyObj(this.myInfo, otherMachine);
-		if (latencyNumbers.containsKey(obj1)) {
-			return latencyNumbers.get(obj1);
-		} else if (latencyNumbers.containsKey(obj1.reverseMachines())) {
-			return latencyNumbers.get(obj1.reverseMachines());
-		} else {
-			return Integer.MAX_VALUE;
-		}
+		return LatencyCalculator.calculateLatency(this.myInfo, otherMachine);
+		/*
+		 * LatencyObj obj1 = new LatencyObj(this.myInfo, otherMachine); if
+		 * (latencyNumbers.containsKey(obj1)) { return latencyNumbers.get(obj1);
+		 * } else if (latencyNumbers.containsKey(obj1.reverseMachines())) {
+		 * return latencyNumbers.get(obj1.reverseMachines()); } else { return
+		 * Integer.MAX_VALUE; }
+		 */
 	}
 
-	protected Node(int port, int numTreads, Machine trackingServer, String dirToWatch, int machineId)
-			throws IOException {
+	public Node(int port, int numTreads, Machine trackingServer, String dirToWatch, int machineId) throws IOException {
 		super(port, numTreads, commandsWhoHandleOwnOutput);
-		initLatencyMap();
+		// initLatencyMap();
 		myInfo.setMachineId(machineId);
-		if (!latencyMachinesId.contains(machineId)) {
-			String message = String.format("Given machineId=%s does not exists in the Latency file.", machineId);
-			LoggingUtils.logInfo(logger, message);
-			throw new IllegalArgumentException(message);
-		}
+		/*
+		 * if (!latencyMachinesId.contains(machineId)) { String message =
+		 * String.
+		 * format("Given machineId=%s does not exists in the Latency file.",
+		 * machineId); LoggingUtils.logInfo(logger, message); throw new
+		 * IllegalArgumentException(message); }
+		 */
 
 		this.myTrackingServer = trackingServer;
 		this.directoryToWatchAndSave = appendPortToDir(dirToWatch, this.myInfo.getPort());
@@ -128,7 +126,7 @@ public class Node extends BasicServer {
 	}
 
 	private String appendPortToDir(String dirToWatch, int port2) {
-		String finalDirectory = dirToWatch + port2 + "\\";
+		String finalDirectory = dirToWatch + port2 + File.separator;
 		File f = new File(finalDirectory);
 		if (!f.exists()) {
 			if (!f.mkdir()) {
@@ -472,7 +470,7 @@ public class Node extends BasicServer {
 	 * @return
 	 * @throws IOException this means that the Tracking Sever is down. Need to act by blocking
 	 */
-	public void downloadFileFromPeer(String fileName, List<PeerMachine> avlblPeers) throws IOException {
+	public void downloadFileFromPeer(String fileName, List<PeerMachine> avlblPeers) {
 		removeIfMyMachineExistsInPeers(avlblPeers);
 		if (avlblPeers.size() > 0) {
 			DownloadStatus downloadStatus = new DownloadStatus(fileName, avlblPeers);
@@ -496,7 +494,7 @@ public class Node extends BasicServer {
 
 	}
 
-	private List<String> getFilesFromTheWatchedDirectory(long lastUpdateTime, boolean sendCompleteList) {
+	public List<String> getFilesFromTheWatchedDirectory(long lastUpdateTime, boolean sendCompleteList) {
 		List<String> listOfFiles = new ArrayList<String>();
 		File dir = new File(directoryToWatchAndSave);
 		File[] fileListing = dir.listFiles();
@@ -505,14 +503,16 @@ public class Node extends BasicServer {
 				listOfFiles.add(f.getName());
 			}
 		}
+		LoggingUtils.logInfo(logger, "Sending fileList = %s from getFilesFromTheWatchedDirectory for peer=%s",
+				listOfFiles, myInfo);
 		return listOfFiles;
 	}
 
 	@Override
-	protected void stopSpecific() {
-		this.updateServerThread.interrupt();
+	protected void shutdownSpecific() {
+		this.updateServerThread.invokeShutdown();
 		this.downloadService.stop();
-		this.unfinishedTaskMonitor.interrupt();
+		this.unfinishedTaskMonitor.invokeShutdown();
 	}
 
 	protected void trackingServerUnavlblBlock() {
@@ -526,7 +526,7 @@ public class Node extends BasicServer {
 	}
 
 	@Override
-	protected void startSpecific() {
+	protected void intializeSpecific() {
 		this.updateServerThread.start();
 		this.downloadService.start();
 		this.unfinishedTaskMonitor.start();
@@ -549,6 +549,7 @@ public class Node extends BasicServer {
 			System.out.println("Starting node =" + n.myInfo);
 			String fileToFind = "big.pdf";
 			n.findAndDownloadFile(fileToFind);
+			Thread.currentThread().join();
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -561,17 +562,26 @@ public class Node extends BasicServer {
 
 	public void findAndDownloadFile(String fileToFind) throws IOException {
 		if (Utils.isNotEmpty(fileToFind)) {
-			List<Machine> machinesWithFile = findFileOnTracker(fileToFind, null);
-			if (machinesWithFile != null) {
-				List<PeerMachine> avlblPeers = getPeerMachineList(machinesWithFile);
-				downloadFileFromPeer(fileToFind, avlblPeers);
-				LoggingUtils.logInfo(logger, "Queued the file=%s for download from the following peers=%s", fileToFind,
-						avlblPeers);
+			if (fileNotExistsOnLocal(fileToFind)) {
+				List<Machine> machinesWithFile = findFileOnTracker(fileToFind, null);
+				if (machinesWithFile != null) {
+					List<PeerMachine> avlblPeers = getPeerMachineList(machinesWithFile);
+					downloadFileFromPeer(fileToFind, avlblPeers);
+					LoggingUtils.logInfo(logger, "Queued the file=%s for download from the following peers=%s",
+							fileToFind, avlblPeers);
+				}
+			} else {
+				LoggingUtils.logInfo(logger, "Did not download file=%s as it exists on local", fileToFind);
 			}
+
 		} else {
 			LoggingUtils.logInfo(logger, "file=%s came as empty", fileToFind);
 		}
 
+	}
+
+	private boolean fileNotExistsOnLocal(String fileToFind) {
+		return !myFilesAndChecksums.containsKey(fileToFind);
 	}
 
 	private List<PeerMachine> getPeerMachineList(List<Machine> machinesWithFile) {
@@ -601,6 +611,7 @@ public class Node extends BasicServer {
 	private class UpdateTrackingServer extends Thread {
 		private long lastUpdateTime = 0;
 		private boolean sendCompleteStatusOnNextAttempt = false;
+		private boolean shutdownInvoked = false;
 
 		@Override
 		public void run() {
@@ -631,8 +642,15 @@ public class Node extends BasicServer {
 					 * not need to update the server completely.
 					 */
 					if (!sendCompleteStatusOnNextAttempt) {
-						synchronized (updateThreadMonitorObj) {
-							updateThreadMonitorObj.wait(NodeProps.HEARTBEAT_INTERVAL);
+						try {
+							synchronized (updateThreadMonitorObj) {
+								updateThreadMonitorObj.wait(NodeProps.HEARTBEAT_INTERVAL);
+							}
+						} catch (InterruptedException e) {
+							if(!shutdownInvoked){
+								logger.error("Interrupted Exception caught, stopping updater thread", e);
+							}
+							
 						}
 					}
 				} catch (Exception e) {
@@ -645,8 +663,13 @@ public class Node extends BasicServer {
 					 * able to communicate with it again
 					 */
 				}
-			} while (true);
+			} while (!shutdownInvoked);
 
+		}
+
+		private void invokeShutdown() {
+			this.shutdownInvoked = true;
+			this.interrupt();
 		}
 	}
 
@@ -657,6 +680,8 @@ public class Node extends BasicServer {
 	 * 
 	 */
 	private class UnfinishedDownloadTaskMonitor extends Thread {
+		boolean shutdownInvoked = false;
+
 		@Override
 		public void run() {
 			try {
@@ -667,7 +692,7 @@ public class Node extends BasicServer {
 				 * to be done with the same peer list else we can insert the
 				 * command as a new one using the download functionality
 				 */
-				while (true) {
+				while (!shutdownInvoked) {
 					while (!unfinishedDownloadStatus.isEmpty()) {
 						DownloadStatus dwnStatus = unfinishedDownloadStatus.peek();
 						if (dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.NOT_STARTED
@@ -697,16 +722,18 @@ public class Node extends BasicServer {
 						 * even if the file was correctly downloaded there might
 						 * be some unreachable peers
 						 */
-
-						LoggingUtils.logInfo(logger,
-								"Some peers could have been unreachable, send to server OPTIONAL.", dwnStatus);
 						sendServerFailedPeerInfo(dwnStatus);
 
 					}
 					try {
 						Thread.sleep(NodeProps.UNFINISHED_TASK_INTERVAL);
 					} catch (Exception e) {
-						logger.error("Error in while loop sleep", e);
+						if(!shutdownInvoked){
+							logger.error("Error in while loop sleep", e);
+						}
+						// if error while sleeping, this could be interrupt
+						// signal, get out
+						
 					}
 				}
 
@@ -725,10 +752,23 @@ public class Node extends BasicServer {
 				}
 			}
 
-			sendFailedPeerMessageToTrackingServer(machinesToReport);
+			if (machinesToReport.size() > 0) {
+				LoggingUtils.logInfo(logger, "Some peers =%s unreachable, send to server OPTIONAL. \ndwnStatus=%s",
+						machinesToReport, dwnStatus);
+				sendFailedPeerMessageToTrackingServer(machinesToReport);
+			}
 
 		}
 
+		private void invokeShutdown() {
+			this.shutdownInvoked = true;
+			this.interrupt();
+		}
+
+	}
+
+	public boolean hasUnfinishedDownloads() {
+		return this.unfinishedDownloadStatus.size() > 0;
 	}
 
 	private void sendFailedPeerMessageToTrackingServer(List<PeerMachine> machinesToReport) throws IOException {
@@ -824,4 +864,5 @@ public class Node extends BasicServer {
 		}
 
 	}
+
 }

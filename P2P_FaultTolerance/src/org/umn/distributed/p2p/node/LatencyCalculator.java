@@ -49,6 +49,8 @@ public class LatencyCalculator {
 	}
 
 	private static abstract class IPSeparator {
+		private static final int LATENCY_MULTIPLIER = 500;
+		private static final int MODULOUS_NUMBER = 50;
 		protected int part1;
 		protected int part2;
 		protected int part3;
@@ -63,8 +65,8 @@ public class LatencyCalculator {
 			latency += (this.part4 - ip2.part4) * IP_PART4_JUMP;
 			latency += (this.port - ip2.port) * IP_PORT_JUMP;
 			latency = Math.abs(latency);
-			latency = (latency % 50) + 1; // latency between 100 - 5000
-			latency = latency * 100;
+			latency = (latency % MODULOUS_NUMBER) + 1; // latency between 500 - 25000
+			latency = latency * LATENCY_MULTIPLIER;
 			return latency;
 		}
 
