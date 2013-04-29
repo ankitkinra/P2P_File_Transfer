@@ -102,6 +102,7 @@ public class DownloadQueueObject implements Runnable {
 			for (PeerMachine m : this.peersToDownloadFrom) {
 				if (!this.failedMachines.contains(m)) {
 					try {
+						LoggingUtils.logInfo(logger, "Trying: %s", m);
 						downloadFileFromPeer(this.dwnldStatus.getFileToDownload(), m);
 					} catch (Exception e) {
 						// An exception here means that the peer was unreachable
@@ -152,7 +153,6 @@ public class DownloadQueueObject implements Runnable {
 	/**
 	 * @param fileToDownload2
 	 * @param m
-	 * @throws Exception
 	 */
 	private void downloadFileFromPeer(String fileToDownload2, PeerMachine m) {
 		LoggingUtils.logInfo(logger, "starting download of file=%s from peer = %s",

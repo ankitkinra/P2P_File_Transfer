@@ -1,9 +1,11 @@
 package org.umn.distributed.p2p.node;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,6 +22,7 @@ import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
+import org.omg.PortableInterceptor.ServerIdHelper;
 import org.umn.distributed.p2p.common.BasicServer;
 import org.umn.distributed.p2p.common.LoggingUtils;
 import org.umn.distributed.p2p.common.Machine;
@@ -34,6 +37,10 @@ import org.umn.distributed.p2p.node.Constants.PEER_DOWNLOAD_ACTIVITY;
 
 public class Node extends BasicServer {
 	protected Logger logger = Logger.getLogger(this.getClass());
+	private static final String COMMAND_STOP = "stop";
+	private static final String COMMAND_FIND = "find";
+	private static final String COMMAND_DOWNLAOD = "download";
+	
 	protected int port;
 	private final AtomicInteger currentUploads = new AtomicInteger(0);
 	private final AtomicInteger currentDownloads = new AtomicInteger(0);
@@ -294,7 +301,7 @@ public class Node extends BasicServer {
 	 * @return
 	 * @throws IOException this means that the Tracking Sever is down. Need to act by blocking
 	 */
-	public List<Machine> findFileOnTracker(String fileName, List<PeerMachine> failedPeers) throws IOException {
+	public List<Machine> findFileOnTracker(String fileName, List<PeerMachine> failedPeers) {
 		List<Machine> foundPeers = null;
 		if (this.trackingServerUnavlblBlocked) {
 			if (NodeProps.enableFileLocationCacheLookup) {
@@ -319,25 +326,29 @@ public class Node extends BasicServer {
 			}
 		}
 		byte[] awqReturn = null;
-		try {
-			awqReturn = TCPClient.sendData(myTrackingServer, myInfo,
-					Utils.stringToByte(findFileMessage.toString(), NodeProps.ENCODING));
-			String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
-			// return expected as ""
-			String[] brokenOnCommandSeparator = Utils.splitCommandIntoFragments(awqStr);
-			if (brokenOnCommandSeparator[0].startsWith(SharedConstants.COMMAND_SUCCESS)) {
-				LoggingUtils.logInfo(logger, "peers =%s found for file=%s", brokenOnCommandSeparator[1], fileName);
-				foundPeers = Machine.parseList(brokenOnCommandSeparator[1]);
+		//TODO: Kinra check mine changes
+		while(true) {
+			try {
+				awqReturn = TCPClient.sendData(myTrackingServer, myInfo,
+						Utils.stringToByte(findFileMessage.toString(), NodeProps.ENCODING));
+				String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
+				// return expected as ""
+				String[] brokenOnCommandSeparator = Utils.splitCommandIntoFragments(awqStr);
+				if (brokenOnCommandSeparator[0].startsWith(SharedConstants.COMMAND_SUCCESS)) {
+					LoggingUtils.logInfo(logger, "peers =%s found for file=%s", brokenOnCommandSeparator[1], fileName);
+					foundPeers = Machine.parseList(brokenOnCommandSeparator[1]);
+				}
+				if (foundPeers != null && foundPeers.size() > 0) {
+					updateFileServerCache(fileName, foundPeers);
+				}
+				break;
+			} catch (IOException e) {
+				// if connection breaks, it means we need to block on the tracking
+				// server
+				LoggingUtils.logError(logger, e, "Error in communicating with tracker server");
+				this.trackingServerUnavlblBlock();
+				checkIfBlockedAndAct("findFileOnTracker, findFile=" + fileName);
 			}
-			if (foundPeers != null && foundPeers.size() > 0) {
-				updateFileServerCache(fileName, foundPeers);
-			}
-		} catch (IOException e) {
-			// if connection breaks, it means we need to block on the tracking
-			// server
-			LoggingUtils.logError(logger, e, "Error in communicating with tracker server");
-			this.trackingServerUnavlblBlock();
-			throw e;
 		}
 
 		return foundPeers;
@@ -532,24 +543,90 @@ public class Node extends BasicServer {
 		this.unfinishedTaskMonitor.start();
 	}
 
+	public static void showStartUsage() {
+		System.out.println("Usage:");
+		System.out
+				.println("Start replica: ./startnode.sh <trackingServerIp> <trackingServerPort> <myPort> <directoryForFiles> <machineId>");
+	}
+
+	public static void showUsage() {
+		System.out.println("\n\nUsage:");
+		System.out.println("Find: " + COMMAND_FIND
+				+ " <file name>");
+		System.out
+				.println("Download: "
+						+ COMMAND_DOWNLAOD
+						+ " <file name> [<machine list>]");
+		System.out.println("eg. ");
+		System.out.println(COMMAND_DOWNLAOD + " xyz.txt");
+		System.out.println(COMMAND_DOWNLAOD + " abc.txt node1:1000|node2:1000|node2:2000");
+		System.out.println("Stop: " + COMMAND_STOP);
+	}
+	
 	public static void main(String[] args) {
 		// TOOD in the production there would not be localServerIP but one from
 		// properties
-		System.out.println(Arrays.toString(args));
-		String serverIpAddress = args[0];
-		String serverPort = args[1];
-		int myPort = Integer.parseInt(args[2]);
-		Machine trackingServer = new Machine(serverIpAddress, serverPort);
+		int serverPort = 0;
+		int myPort = 0;
+		int machineId = 0;
+		if (args.length == 4) {
+			try {
+				serverPort = Integer.parseInt(args[1]);
+				myPort = Integer.parseInt(args[2]);
+				machineId = Integer.parseInt(args[4]);
+				if (!Utils.isValidPort(myPort) || !Utils.isValidPort(serverPort)) {
+					System.out.println("Invalid port");
+					showStartUsage();
+					return;
+				}
+			} catch (NumberFormatException nfe) {
+				System.out.println("Invalid port or machine Id");
+				showStartUsage();
+				return;
+			}
+		} else {
+			showStartUsage();
+			return;
+		}
+		Machine trackingServer = new Machine(args[0], serverPort);
 		String dirToWatch = getDirToWatch(args[3]);
-		int machineId = Integer.parseInt(args[4]);
 		Node n = null;
 		try {
 			n = new Node(myPort, 10, trackingServer, dirToWatch, machineId);
 			n.start();
 			System.out.println("Starting node =" + n.myInfo);
-			String fileToFind = "test1.txt";
-			n.findAndDownloadFile(fileToFind);
-			Thread.currentThread().join();
+			BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+			boolean stopped = false;
+			while (!stopped) {
+				showUsage();
+				String command = reader.readLine();
+				if (command.startsWith(COMMAND_FIND)) {
+					if(command.length() > COMMAND_FIND.length()) {
+						String fileToFind = command
+								.substring(COMMAND_FIND.length()).trim();
+						if(!Utils.isEmpty(fileToFind)) {
+							List<Machine> machinesWithFile = n.findFileOnTracker(fileToFind, null);
+							for (Machine m : machinesWithFile) {
+								StringBuilder builder = new StringBuilder();
+								builder.append(Machine.FORMAT_START).append(m.getIP()).append(SharedConstants.COMMAND_LIST_SEPARATOR).append(m.getPort())
+										.append(Machine.FORMAT_END);
+								System.out.println(builder.toString());
+							}
+						}
+					}
+				} else if(command.startsWith(COMMAND_DOWNLAOD)) {
+					if(command.length() > COMMAND_DOWNLAOD.length()) {
+						String fileToFind = command
+								.substring(COMMAND_DOWNLAOD.length()).trim();
+						if(!Utils.isEmpty(fileToFind)) {
+							n.findAndDownloadFile(fileToFind);
+						}
+					}
+				} else if (command.startsWith(COMMAND_STOP)) {
+					stopped = true;
+					System.out.println("Exiting client.");
+				}
+			}
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -560,14 +637,13 @@ public class Node extends BasicServer {
 
 	}
 	
-	
-
-	public void findAndDownloadFile(String fileToFind) throws IOException {
+	public void findAndDownloadFile(String fileToFind) {
 		if (Utils.isNotEmpty(fileToFind)) {
 			if (fileNotExistsOnLocal(fileToFind)) {
 				List<Machine> machinesWithFile = findFileOnTracker(fileToFind, null);
 				if (machinesWithFile != null) {
 					List<PeerMachine> avlblPeers = getPeerMachineList(machinesWithFile);
+					System.out.println(avlblPeers);
 					downloadFileFromPeer(fileToFind, avlblPeers);
 					LoggingUtils.logInfo(logger, "Queued the file=%s for download from the following peers=%s",
 							fileToFind, avlblPeers);

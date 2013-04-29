@@ -160,15 +160,11 @@ public class TestClient {
 
 							try {
 								n.findAndDownloadFile(fileName);
-							} catch (IOException e) {
-								LoggingUtils.logError(logger, e, "Error downloading the file=%s", fileName);
-							} catch (Exception e) {
-								LoggingUtils
-										.logError(
-												logger,
-												e,
-												"Error Trying to downloading the file=%s, fileIdx=%s,files=%s, machineId=%s; idNodeMap=%s",
-												fileName, fileIdx, files, machineId, idNodeMap);
+//							} catch (IOException e) {
+//								LoggingUtils.logError(logger, e, "Error downloading the file=%s", fileName);
+							} catch (Exception e){
+								LoggingUtils.logError(logger, e, "Error Trying to downloading the file=%s, fileIdx=%s,files=%s, machineId=%s; idNodeMap=%s", fileName,
+										fileIdx, files, machineId,idNodeMap);
 							}
 						}
 
@@ -189,11 +185,11 @@ public class TestClient {
 								for (int j = 0; j < individualDownloadsToBegin; j++) {
 									int fileIdx = randomGenerator.nextInt(files.size());
 									String fileName = files.get(fileIdx);
-									try {
+//									try {
 										entry.getValue().findAndDownloadFile(fileName);
-									} catch (IOException e) {
-										LoggingUtils.logError(logger, e, "Error downloading the file=%s", fileName);
-									}
+//									} catch (IOException e) {
+//										LoggingUtils.logError(logger, e, "Error downloading the file=%s", fileName);
+//									}
 								}
 							}
 
