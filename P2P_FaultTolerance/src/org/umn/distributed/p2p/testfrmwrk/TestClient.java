@@ -42,7 +42,7 @@ public class TestClient {
 	private static final long SLEEP_TIME_PEER_SHUTDOWN = 1000;
 
 	private String xmlTestCasePath = null;
-	private Logger logger = Logger.getLogger(TestClient.class);
+	private static Logger logger = Logger.getLogger(TestClient.class);
 	private TestSuite testSuite = null;
 	private Machine myTrackingServer;
 	private HashMap<Integer, RoundSummary> roundSummaries = new HashMap<Integer, RoundSummary>();
@@ -94,6 +94,7 @@ public class TestClient {
 		} else {
 			showUsage();
 		}
+		LoggingUtils.logInfo(logger, "Finished processsing");
 	}
 
 	private void startTest() throws InterruptedException {
@@ -156,14 +157,18 @@ public class TestClient {
 							int fileIdx = randomGenerator.nextInt(files.size());
 							Node n = idNodeMap.get(machineId);
 							String fileName = files.get(fileIdx);
-							
+
 							try {
 								n.findAndDownloadFile(fileName);
 							} catch (IOException e) {
 								LoggingUtils.logError(logger, e, "Error downloading the file=%s", fileName);
-							} catch (Exception e){
-								LoggingUtils.logError(logger, e, "Error Trying to downloading the file=%s, fileIdx=%s,files=%s, machineId=%s; idNodeMap=%s", fileName,
-										fileIdx, files, machineId,idNodeMap);
+							} catch (Exception e) {
+								LoggingUtils
+										.logError(
+												logger,
+												e,
+												"Error Trying to downloading the file=%s, fileIdx=%s,files=%s, machineId=%s; idNodeMap=%s",
+												fileName, fileIdx, files, machineId, idNodeMap);
 							}
 						}
 
@@ -203,11 +208,12 @@ public class TestClient {
 			if (idNodeMap.size() > 0) {
 				boolean unfinishedDownloadPresent = true;
 				while (unfinishedDownloadPresent) {
-
+					Thread.sleep(SLEEP_TIME_PEER_SHUTDOWN);
 					for (int ij = 1; ij <= numberOfPeerstoLaunch; ij++) {
 						Node n = idNodeMap.get(ij);
 						if (n != null) {
 							if (n.hasUnfinishedDownloads()) {
+								LoggingUtils.logDebug(logger, "###############Tasks are not over for thread group=%s", n.getId());
 								unfinishedDownloadPresent = true;
 								break;
 							} else {
@@ -226,8 +232,7 @@ public class TestClient {
 							}
 						}
 					}
-					
-					Thread.sleep(SLEEP_TIME_PEER_SHUTDOWN);
+
 				}
 
 			}
