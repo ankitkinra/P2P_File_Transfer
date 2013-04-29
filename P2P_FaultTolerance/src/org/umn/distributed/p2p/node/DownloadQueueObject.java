@@ -121,10 +121,11 @@ public class DownloadQueueObject implements Runnable {
 			}
 			if (!this.dwnldStatus.getDownloadActivityStatus().equals(DOWNLOAD_ACTIVITY.DONE)) {
 				if (this.failedMachines.size() == this.peersToDownloadFrom.size()) {
-					LoggingUtils.logInfo(logger, "All peers failed, will retry");
+					LoggingUtils.logInfo(logger,
+							"All peers failed, will not retry, if client wants we can restart the process");
 					this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.ALL_PEERS_UNREACHABLE);
 					this.dwnldStatus.setEndTimeOfDownloadFile(SharedConstants.FILE_FAILED_TIME);
-					failedTaskQRef.add(this);
+					// failedTaskQRef.add(this);
 				} else {
 					/*
 					 * download did not complete, some peer might be reachable
@@ -139,7 +140,9 @@ public class DownloadQueueObject implements Runnable {
 			}
 		} finally {
 			// no exception needs to be caught
-			this.activeDownloadCount.decrementAndGet();
+			if (this.activeDownloadCount.decrementAndGet() < 0) {
+				throw new IllegalArgumentException("ActiveDownloadCount cannot be less than zero");
+			}
 		}
 	}
 
@@ -236,16 +239,17 @@ public class DownloadQueueObject implements Runnable {
 		try {
 			checksum = TCPClient.sendData(peerDownloadedFrom, myMachineInfo,
 					Utils.stringToByte(downloadFileMessage.toString(), NodeProps.ENCODING));
+			LoggingUtils.logDebug(logger, "fileDownloadedChecksum=%s; checksum=%s",
+					Arrays.toString(fileDownloadedChecksum), Arrays.toString(checksum));
+			if (checksum == null || fileDownloadedChecksum == null) {
+				return false;
+			} else {
+				return Arrays.equals(fileDownloadedChecksum, checksum);
+			}
 		} catch (IOException e) {
 			LoggingUtils.logError(logger, e, "Error in communicating with peer =%s while asking for checksum",
 					peerDownloadedFrom);
-		}
-		LoggingUtils.logDebug(logger, "fileDownloadedChecksum=%s; checksum=%s",
-				Arrays.toString(fileDownloadedChecksum), Arrays.toString(checksum));
-		if (checksum == null || fileDownloadedChecksum == null) {
-			return false;
-		} else {
-			return Arrays.equals(fileDownloadedChecksum, checksum);
+			throw e;
 		}
 
 	}

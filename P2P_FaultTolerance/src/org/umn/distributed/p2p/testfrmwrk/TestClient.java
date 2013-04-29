@@ -123,8 +123,8 @@ public class TestClient {
 					if (Utils.isNotEmpty(numberOfPeerstoLaunchStr) && Utils.isNotEmpty(numberThreadsStr)) {
 						numberOfPeerstoLaunch = Integer.parseInt(numberOfPeerstoLaunchStr);
 						numberThreads = Integer.parseInt(numberThreadsStr);
-						for (int peerCtr = 0; peerCtr < numberOfPeerstoLaunch; peerCtr++) {
-							int nodePort = nodeStartPort + peerCtr;
+						for (int peerCtr = 1; peerCtr <= numberOfPeerstoLaunch; peerCtr++) {
+							int nodePort = nodeStartPort + peerCtr - 1;
 							Node n = null;
 							try {
 								n = new Node(nodePort, numberThreads, myTrackingServer, dirToWatch, peerCtr);
@@ -136,7 +136,7 @@ public class TestClient {
 							}
 
 						}
-						for (int ctr = 0; ctr < numberOfPeerstoLaunch; ctr++) {
+						for (int ctr = 1; ctr <= numberOfPeerstoLaunch; ctr++) {
 							idNodeMap.get(ctr).join();
 						}
 
@@ -150,16 +150,19 @@ public class TestClient {
 					int machineId = Integer.parseInt(machineIdStr);
 					int filesToDownload = Integer.parseInt(filesToDownloadStr);
 					List<String> files = getAllFilesOtherThan(machineId);
-					filesToDownload = Math.min(filesToDownload, files.size());
 					if (files.size() > 0) {
 						for (int j = 0; j < filesToDownload; j++) {
-							int fileIdx = randomGenerator.nextInt(filesToDownload);
+							int fileIdx = randomGenerator.nextInt(files.size());
 							Node n = idNodeMap.get(machineId);
 							String fileName = files.get(fileIdx);
+							
 							try {
 								n.findAndDownloadFile(fileName);
 							} catch (IOException e) {
 								LoggingUtils.logError(logger, e, "Error downloading the file=%s", fileName);
+							} catch (Exception e){
+								LoggingUtils.logError(logger, e, "Error Trying to downloading the file=%s, fileIdx=%s,files=%s, machineId=%s; idNodeMap=%s", fileName,
+										fileIdx, files, machineId,idNodeMap);
 							}
 						}
 
@@ -175,11 +178,10 @@ public class TestClient {
 					List<String> files = getAllFilesOtherThan(-1);
 					if (Utils.isNotEmpty(individualDownloadsToBeginStr)) {
 						individualDownloadsToBegin = Integer.parseInt(individualDownloadsToBeginStr);
-						individualDownloadsToBegin = Math.min(individualDownloadsToBegin, files.size());
 						if (files.size() > 0 && idNodeMap.size() > 0) {
 							for (Entry<Integer, Node> entry : idNodeMap.entrySet()) {
 								for (int j = 0; j < individualDownloadsToBegin; j++) {
-									int fileIdx = randomGenerator.nextInt(individualDownloadsToBegin);
+									int fileIdx = randomGenerator.nextInt(files.size());
 									String fileName = files.get(fileIdx);
 									try {
 										entry.getValue().findAndDownloadFile(fileName);

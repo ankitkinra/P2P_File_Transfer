@@ -67,7 +67,7 @@ public class Node extends BasicServer {
 	private long totalUploadRequestHandled = 0;
 	private long totalDownloadRequested = 0;
 	private HashMap<String, HashSet<Machine>> filesServersCache = new HashMap<String, HashSet<Machine>>();
-
+	private boolean testChecksum = false; // used to test the failing of checksum
 	/*
 	 * private void initLatencyMap() throws IOException { if
 	 * (latencyNumbers.size() == 0) { // get the latency file and add the
@@ -363,7 +363,7 @@ public class Node extends BasicServer {
 	private void calculateAndAddChecksums(List<String> fileNamesToSend) throws Exception {
 		for (String fileName : fileNamesToSend) {
 			// as the file has come here maybe it has updated modified
-			byte[] checkSum = Utils.createChecksum(directoryToWatchAndSave + fileName);
+			byte[] checkSum = Utils.createChecksum(directoryToWatchAndSave + fileName, testChecksum);
 			LoggingUtils.logDebug(logger, "Created checksum =%s for the File =%s", Arrays.toString(checkSum), fileName);
 			myFilesAndChecksums.put(fileName, checkSum);
 		}
@@ -547,7 +547,7 @@ public class Node extends BasicServer {
 			n = new Node(myPort, 10, trackingServer, dirToWatch, machineId);
 			n.start();
 			System.out.println("Starting node =" + n.myInfo);
-			String fileToFind = "big.pdf";
+			String fileToFind = "test1.txt";
 			n.findAndDownloadFile(fileToFind);
 			Thread.currentThread().join();
 		} catch (IOException e1) {
@@ -559,6 +559,8 @@ public class Node extends BasicServer {
 		}
 
 	}
+	
+	
 
 	public void findAndDownloadFile(String fileToFind) throws IOException {
 		if (Utils.isNotEmpty(fileToFind)) {

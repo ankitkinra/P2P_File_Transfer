@@ -60,7 +60,7 @@ public class Utils {
 	public static boolean isEmpty(String str) {
 		return str == null || str.trim().length() == 0;
 	}
-	
+
 	public static boolean isNotEmpty(String str) {
 		return !isEmpty(str);
 	}
@@ -212,10 +212,19 @@ public class Utils {
 	}
 
 	public static byte[] createChecksum(String filename) throws Exception {
+		return createChecksum(filename, false);
+	}
+
+	public static byte[] createChecksum(String filename, boolean testChecksum) throws Exception {
 		InputStream fis = new FileInputStream(filename);
 
 		byte[] buffer = new byte[1024];
-		MessageDigest complete = MessageDigest.getInstance(SharedConstants.MESSAGE_DIGEST_NAME);
+		MessageDigest complete = null;
+		if (testChecksum) {
+			complete = MessageDigest.getInstance(SharedConstants.MESSAGE_DIGEST_NAME_TEST);
+		} else {
+			complete = MessageDigest.getInstance(SharedConstants.MESSAGE_DIGEST_NAME);
+		}
 		int numRead;
 
 		do {

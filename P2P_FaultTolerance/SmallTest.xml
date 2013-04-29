@@ -10,11 +10,11 @@
 					<params>
 						<entry>
 							<string>numberOfPeers</string>
-							<string>10</string>
+							<string>3</string>
 						</entry>
 						<entry>
 							<string>numThreads</string>
-							<string>10</string>
+							<string>1</string>
 						</entry>
 						<entry>
 							<string>dirToWatch</string>
@@ -63,17 +63,6 @@
 						</entry>
 						<entry>
 							<string>filesToDownload</string>
-							<string>5</string>
-						</entry>
-					</params>
-				</operation>
-				<operation>
-					<sno>5</sno>
-					<!-- this will download a particular file on a random/particular peer -->
-					<name>downloadFileRandom</name>
-					<params>
-						<entry>
-							<string>individualDownloadsToBegin</string>
 							<string>5</string>
 						</entry>
 					</params>

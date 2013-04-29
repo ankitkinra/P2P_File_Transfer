@@ -16,6 +16,7 @@ public class SharedConstants {
 	public static final int DEFAULT_BUFFER_LENGTH = 1024;
 	public static final long FILE_FAILED_TIME = -1;
 	public static final String MESSAGE_DIGEST_NAME = "MD5";
+	public static final String MESSAGE_DIGEST_NAME_TEST = "SHA1";
 	public static final byte[] FILE_NOT_FOUND = Utils.stringToByte("FILE_NOT_FOUND");
 
 	public static enum NODE_REQUEST_TO_SERVER {

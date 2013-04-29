@@ -47,19 +47,19 @@ public class DownloadService {
 	}
 
 	public void start() {
-		this.failedQMonitor.start();
+		//this.failedQMonitor.start();
 	}
 
 	public void stop() {
-		try {
+		/*try {
 			this.failedQMonitor.isCancelled = true;
 			this.failedQMonitor.interrupt();
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			
 		} finally {
-			this.service.shutdown();
-		}
+			
+		}*/
+		this.service.shutdown();
 
 	}
 
