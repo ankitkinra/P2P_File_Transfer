@@ -107,7 +107,9 @@ public class DownloadQueueObject implements Runnable {
 						// An exception here means that the peer was unreachable
 						// now,
 						// even after the load stage it responded
+						LoggingUtils.logError(logger, e, "Unrecorded exception, will add this machine =%s to failed set",m);
 						this.failedMachines.add(m);
+						this.peerDownloadStatus.put(m, PEER_DOWNLOAD_ACTIVITY.UNREACHABLE);
 					}
 				}
 				if (this.dwnldStatus.getDownloadActivityStatus().equals(DOWNLOAD_ACTIVITY.DONE)) {
@@ -126,6 +128,7 @@ public class DownloadQueueObject implements Runnable {
 					this.dwnldStatus.setDownloadActivityStatus(DOWNLOAD_ACTIVITY.ALL_PEERS_UNREACHABLE);
 					this.dwnldStatus.setEndTimeOfDownloadFile(SharedConstants.FILE_FAILED_TIME);
 					// failedTaskQRef.add(this);
+					// not trying the task again
 				} else {
 					/*
 					 * download did not complete, some peer might be reachable
@@ -151,7 +154,7 @@ public class DownloadQueueObject implements Runnable {
 	 * @param m
 	 * @throws Exception
 	 */
-	private void downloadFileFromPeer(String fileToDownload2, PeerMachine m) throws Exception {
+	private void downloadFileFromPeer(String fileToDownload2, PeerMachine m) {
 		LoggingUtils.logInfo(logger, "starting download of file=%s from peer = %s",
 				this.dwnldStatus.getFileToDownload(), m);
 		this.peerDownloadStatus.put(m, PEER_DOWNLOAD_ACTIVITY.STARTED);
@@ -205,6 +208,8 @@ public class DownloadQueueObject implements Runnable {
 			LoggingUtils.logError(logger, fe, "File =%s was not found on the peer=%s, maybe update the own cache ",
 					fileToDownload2, m);
 			deleteFile(fileToDownloadAt);
+			this.peerDownloadStatus.put(m, PEER_DOWNLOAD_ACTIVITY.FILE_NOT_FOUND);
+			failedMachines.add(m);
 		} catch (IOException e) {
 			// if connection breaks, this means that this peer is down
 			LoggingUtils.logError(logger, e, "Error in communicating with peer = " + m);
@@ -225,7 +230,7 @@ public class DownloadQueueObject implements Runnable {
 	}
 
 	private boolean verifyFile(String filenameDownloaded, Machine peerDownloadedFrom, byte[] fileDownloadedChecksum,
-			String fileToDownloadAt) throws Exception {
+			String fileToDownloadAt) throws IOException {
 		LoggingUtils.logDebug(logger,
 				"verification of downloaded file begins. fileName=%s, machine =%s fileDownloadedChecksum=%s",
 				filenameDownloaded, peerDownloadedFrom, fileDownloadedChecksum);

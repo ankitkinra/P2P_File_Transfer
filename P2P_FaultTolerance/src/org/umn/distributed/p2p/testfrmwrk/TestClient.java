@@ -39,6 +39,7 @@ public class TestClient {
 	private static final String LAUNCH_PEERS_COMMAND = "launchPeers";
 	private static final String DOWNLOAD_FILE_COMMAND = "downloadFile";
 	private static final String DOWNLOAD_FILE_RANDOM_COMMAND = "downloadFileRandom";
+	private static final long SLEEP_TIME_PEER_SHUTDOWN = 1000;
 
 	private String xmlTestCasePath = null;
 	private Logger logger = Logger.getLogger(TestClient.class);
@@ -203,7 +204,7 @@ public class TestClient {
 				boolean unfinishedDownloadPresent = true;
 				while (unfinishedDownloadPresent) {
 
-					for (int ij = 0; ij < numberOfPeerstoLaunch; ij++) {
+					for (int ij = 1; ij <= numberOfPeerstoLaunch; ij++) {
 						Node n = idNodeMap.get(ij);
 						if (n != null) {
 							if (n.hasUnfinishedDownloads()) {
@@ -218,13 +219,15 @@ public class TestClient {
 					if (unfinishedDownloadPresent) {
 						continue;
 					} else {
-						for (int ij = 0; ij < numberOfPeerstoLaunch; ij++) {
+						for (int ij = 1; ij <= numberOfPeerstoLaunch; ij++) {
 							Node n = idNodeMap.get(ij);
 							if (n != null) {
 								n.shutdown();
 							}
 						}
 					}
+					
+					Thread.sleep(SLEEP_TIME_PEER_SHUTDOWN);
 				}
 
 			}

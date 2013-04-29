@@ -112,7 +112,8 @@ public class TCPClient {
 			 */
 			while ((count = is.read(buffer)) >= 0) {
 				if (bufferCounter == 0) {
-					if (Arrays.equals(buffer, SharedConstants.FILE_NOT_FOUND)) {
+					byte[] bufferCompare = Arrays.copyOf(buffer, count);
+					if (Arrays.equals(bufferCompare, SharedConstants.FILE_NOT_FOUND)) {
 						throw new FileNotFoundException(String.format("The file =%s was not found on the peer =%s",
 								fileWriteLocation, remoteMachine));
 					}
