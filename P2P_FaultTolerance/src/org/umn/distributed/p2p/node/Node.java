@@ -7,6 +7,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -22,7 +24,6 @@ import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
-import org.omg.PortableInterceptor.ServerIdHelper;
 import org.umn.distributed.p2p.common.BasicServer;
 import org.umn.distributed.p2p.common.LoggingUtils;
 import org.umn.distributed.p2p.common.Machine;
@@ -109,7 +110,8 @@ public class Node extends BasicServer {
 		 */
 	}
 
-	public Node(int port, int numTreads, Machine trackingServer, String dirToWatch, int machineId) throws IOException {
+	public Node(int port, int numTreads, Machine trackingServer,
+			String dirToWatch, int machineId) throws IOException {
 		super(port, numTreads, commandsWhoHandleOwnOutput);
 		// initLatencyMap();
 		myInfo.setMachineId(machineId);
@@ -122,13 +124,16 @@ public class Node extends BasicServer {
 		 */
 
 		this.myTrackingServer = trackingServer;
-		this.directoryToWatchAndSave = appendPortToDir(dirToWatch, this.myInfo.getPort());
+		this.directoryToWatchAndSave = appendPortToDir(dirToWatch,
+				this.myInfo.getPort());
 		if (directoryToWatchAndSave == null) {
 			throw new IllegalArgumentException(
 					"Either the directory did not exits or system could not create one. Please check the path and permissions");
 		}
-		downloadService = new DownloadService(currentDownloads, downloadRetryPolicy, downloadPriorityAssignment,
-				initDownloadQueueCapacity, directoryToWatchAndSave, myInfo, updateThreadMonitorObj);
+		downloadService = new DownloadService(currentDownloads,
+				downloadRetryPolicy, downloadPriorityAssignment,
+				initDownloadQueueCapacity, directoryToWatchAndSave, myInfo,
+				updateThreadMonitorObj);
 		this.unfinishedDownloadStatus = new PriorityQueue<DownloadStatus>(10,
 				DownloadStatus.DOWNLOAD_STATUS_SORTED_BY_UNFINISHED_STATUS);
 
@@ -147,7 +152,8 @@ public class Node extends BasicServer {
 
 	private static HashSet<String> getCommandsWhoHandleTheirOutput() {
 		HashSet<String> commandsWhoHandleTheirOutput = new HashSet<String>();
-		commandsWhoHandleTheirOutput.add(SharedConstants.NODE_REQUEST_TO_NODE.DOWNLOAD_FILE.name());
+		commandsWhoHandleTheirOutput
+				.add(SharedConstants.NODE_REQUEST_TO_NODE.DOWNLOAD_FILE.name());
 		return commandsWhoHandleTheirOutput;
 	}
 
@@ -170,12 +176,14 @@ public class Node extends BasicServer {
 			if (request.startsWith(NODE_REQUEST_TO_NODE.GET_LOAD.name())) {
 				int load = handleGetLoadMessage(request);
 				StringBuilder returnLoadMessage = new StringBuilder();
-				returnLoadMessage.append(SharedConstants.COMMAND_SUCCESS).append(
-						SharedConstants.COMMAND_PARAM_SEPARATOR);
-				returnLoadMessage.append(load).append(SharedConstants.COMMAND_PARAM_SEPARATOR)
+				returnLoadMessage.append(SharedConstants.COMMAND_SUCCESS)
+						.append(SharedConstants.COMMAND_PARAM_SEPARATOR);
+				returnLoadMessage.append(load)
+						.append(SharedConstants.COMMAND_PARAM_SEPARATOR)
 						.append(avgTimeToServiceUploadRequest);
 				return Utils.stringToByte(returnLoadMessage.toString());
-			} else if (request.startsWith(NODE_REQUEST_TO_NODE.GET_CHECKSUM.name())) {
+			} else if (request.startsWith(NODE_REQUEST_TO_NODE.GET_CHECKSUM
+					.name())) {
 				byte[] checksum = handleGetChecksumMessage(request);
 				return checksum;
 			}
@@ -198,9 +206,11 @@ public class Node extends BasicServer {
 	/**
 	 * DOWNLOAD_FILE=<filename>|MACHINE=[M1] request to upload this file
 	 */
-	protected void handleSpecificRequest(String request, OutputStream socketOutput) {
+	protected void handleSpecificRequest(String request,
+			OutputStream socketOutput) {
 		if (!Utils.isEmpty(request)) {
-			logger.info("$$$$$$$$$$$$Message received at Node in special handler:" + request);
+			logger.info("$$$$$$$$$$$$Message received at Node in special handler:"
+					+ request);
 			if (request.startsWith(NODE_REQUEST_TO_NODE.DOWNLOAD_FILE.name())) {
 				handleUploadFileRequest(request, socketOutput);
 			}
@@ -214,40 +224,51 @@ public class Node extends BasicServer {
 	 * @param request
 	 * @param socketOutput
 	 */
-	private void handleUploadFileRequest(String request, OutputStream socketOutput) {
-		LoggingUtils.logInfo(logger, "Starting upload number of request=%s; dirToLookIn=%s", request,
-				directoryToWatchAndSave);
+	private void handleUploadFileRequest(String request,
+			OutputStream socketOutput) {
+		LoggingUtils.logInfo(logger,
+				"Starting upload number of request=%s; dirToLookIn=%s",
+				request, directoryToWatchAndSave);
 		String[] requestArr = Utils.splitCommandIntoFragments(request);
 		String[] fileNameArr = Utils.getKeyAndValuefromFragment(requestArr[0]);
-		String[] destMachineArr = Utils.getKeyAndValuefromFragment(requestArr[1]);
+		String[] destMachineArr = Utils
+				.getKeyAndValuefromFragment(requestArr[1]);
 		Machine m = Machine.parse(destMachineArr[1]);
 		long timeToUpload = System.currentTimeMillis();
-		uploadFile(this.directoryToWatchAndSave + fileNameArr[1], m, socketOutput);
+		uploadFile(this.directoryToWatchAndSave + fileNameArr[1], m,
+				socketOutput);
 		timeToUpload = System.currentTimeMillis() - timeToUpload;
 		updateAverageTimeToServiceUploadRequest(timeToUpload);
 
 	}
 
-	private synchronized double updateAverageTimeToServiceUploadRequest(long timeToServiceRequest) {
+	private synchronized double updateAverageTimeToServiceUploadRequest(
+			long timeToServiceRequest) {
 		long finishedUploads = totalUploadRequestHandled;
 		totalUploadRequestHandled++;
 		double denominator = finishedUploads + 1.0;
-		avgTimeToServiceUploadRequest = avgTimeToServiceUploadRequest * (finishedUploads / denominator)
-				+ timeToServiceRequest / denominator;
+		avgTimeToServiceUploadRequest = avgTimeToServiceUploadRequest
+				* (finishedUploads / denominator) + timeToServiceRequest
+				/ denominator;
 		return avgTimeToServiceUploadRequest;
 	}
 
-	private synchronized double updateAverageTimeToDownloadFile(long timeToServiceRequest) {
+	private synchronized double updateAverageTimeToDownloadFile(
+			long timeToServiceRequest) {
 		long finishedDownloads = totalDownloadRequested;
 		totalDownloadRequested++;
 		double denominator = finishedDownloads + 1.0;
-		avgTimeToGetSuccessfulDownload = avgTimeToGetSuccessfulDownload * (finishedDownloads / denominator)
-				+ timeToServiceRequest / denominator;
+		avgTimeToGetSuccessfulDownload = avgTimeToGetSuccessfulDownload
+				* (finishedDownloads / denominator) + timeToServiceRequest
+				/ denominator;
 		return avgTimeToGetSuccessfulDownload;
 	}
 
-	private void uploadFile(String fileName, Machine machineToSend, OutputStream socketOutput) {
-		LoggingUtils.logInfo(logger, "Starting upload of file = %s to peer =%s", fileName, machineToSend);
+	private void uploadFile(String fileName, Machine machineToSend,
+			OutputStream socketOutput) {
+		LoggingUtils.logInfo(logger,
+				"Starting upload of file = %s to peer =%s", fileName,
+				machineToSend);
 		currentUploads.incrementAndGet();
 		File fileToSend = null;
 		try {
@@ -255,10 +276,12 @@ public class Node extends BasicServer {
 			fileToSend = new File(fileName);
 			if (fileToSend.isFile() && fileToSend.canRead()) {
 				try {
-					FileInputStream fileInputStream = new FileInputStream(fileToSend);
+					FileInputStream fileInputStream = new FileInputStream(
+							fileToSend);
 					int number = 0;
-					LoggingUtils.logInfo(logger, "file = %s to peer =%s;fileToSend = %s", fileName, machineToSend,
-							fileToSend.length());
+					LoggingUtils.logInfo(logger,
+							"file = %s to peer =%s;fileToSend = %s", fileName,
+							machineToSend, fileToSend.length());
 
 					while ((number = fileInputStream.read(buffer)) >= 0) {
 
@@ -267,26 +290,40 @@ public class Node extends BasicServer {
 
 					}
 				} catch (FileNotFoundException e) {
-					LoggingUtils.logError(logger, e, "File=%s not found and sending error to the peer=%s", fileName,
-							machineToSend);
+					LoggingUtils
+							.logError(
+									logger,
+									e,
+									"File=%s not found and sending error to the peer=%s",
+									fileName, machineToSend);
 					try {
-						socketOutput.write(Utils.stringToByte(SharedConstants.COMMAND_FAILED));
+						socketOutput.write(Utils
+								.stringToByte(SharedConstants.COMMAND_FAILED));
 					} catch (IOException e1) {
-						LoggingUtils.logError(logger, e1,
-								"File=%s not found and also could not send error to the peer=%s", fileName,
-								machineToSend);
+						LoggingUtils
+								.logError(
+										logger,
+										e1,
+										"File=%s not found and also could not send error to the peer=%s",
+										fileName, machineToSend);
 					}
 				} catch (IOException e) {
-					LoggingUtils.logError(logger, e, "IOException while tranferring file File=%s ", fileName);
+					LoggingUtils.logError(logger, e,
+							"IOException while tranferring file File=%s ",
+							fileName);
 				}
 			} else {
 				// file not found or is unreadable
-				LoggingUtils.logInfo(logger, "FileNotFound;file = %s not found hence did not transfer peer =%s",
-						fileName, machineToSend);
+				LoggingUtils
+						.logInfo(
+								logger,
+								"FileNotFound;file = %s not found hence did not transfer peer =%s",
+								fileName, machineToSend);
 				socketOutput.write(SharedConstants.FILE_NOT_FOUND);
 			}
 		} catch (Exception e) {
-			LoggingUtils.logError(logger, e, "Exception while tranferring file File=%s ", fileName);
+			LoggingUtils.logError(logger, e,
+					"Exception while tranferring file File=%s ", fileName);
 		} finally {
 			currentUploads.decrementAndGet();
 		}
@@ -303,7 +340,8 @@ public class Node extends BasicServer {
 	 * @return
 	 * @throws IOException this means that the Tracking Sever is down. Need to act by blocking
 	 */
-	public List<Machine> findFileOnTracker(String fileName, List<PeerMachine> failedPeers) {
+	public List<Machine> findFileOnTracker(String fileName,
+			List<PeerMachine> failedPeers) {
 		List<Machine> foundPeers = null;
 		if (this.trackingServerUnavlblBlocked) {
 			if (NodeProps.enableFileLocationCacheLookup) {
@@ -318,9 +356,12 @@ public class Node extends BasicServer {
 				checkIfBlockedAndAct("findFileOnTracker, findFile=" + fileName);
 			}
 		}
-		StringBuilder findFileMessage = new StringBuilder(SharedConstants.NODE_REQUEST_TO_SERVER.FIND.name());
-		findFileMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(fileName);
-		findFileMessage.append(SharedConstants.COMMAND_PARAM_SEPARATOR).append("FAILED_SERVERS")
+		StringBuilder findFileMessage = new StringBuilder(
+				SharedConstants.NODE_REQUEST_TO_SERVER.FIND.name());
+		findFileMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(
+				fileName);
+		findFileMessage.append(SharedConstants.COMMAND_PARAM_SEPARATOR)
+				.append("FAILED_SERVERS")
 				.append(SharedConstants.COMMAND_VALUE_SEPARATOR);
 		if (failedPeers != null) {
 			for (PeerMachine p : failedPeers) {
@@ -330,13 +371,18 @@ public class Node extends BasicServer {
 		byte[] awqReturn = null;
 		while (true) {
 			try {
-				awqReturn = TCPClient.sendData(myTrackingServer, myInfo,
-						Utils.stringToByte(findFileMessage.toString(), NodeProps.ENCODING));
-				String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
+				awqReturn = TCPClient.sendData(myTrackingServer, myInfo, Utils
+						.stringToByte(findFileMessage.toString(),
+								NodeProps.ENCODING));
+				String awqStr = Utils.byteToString(awqReturn,
+						NodeProps.ENCODING);
 				// return expected as ""
-				String[] brokenOnCommandSeparator = Utils.splitCommandIntoFragments(awqStr);
-				if (brokenOnCommandSeparator[0].startsWith(SharedConstants.COMMAND_SUCCESS)) {
-					LoggingUtils.logInfo(logger, "peers =%s found for file=%s", brokenOnCommandSeparator[1], fileName);
+				String[] brokenOnCommandSeparator = Utils
+						.splitCommandIntoFragments(awqStr);
+				if (brokenOnCommandSeparator[0]
+						.startsWith(SharedConstants.COMMAND_SUCCESS)) {
+					LoggingUtils.logInfo(logger, "peers =%s found for file=%s",
+							brokenOnCommandSeparator[1], fileName);
 					foundPeers = Machine.parseList(brokenOnCommandSeparator[1]);
 				} else {
 					// empty
@@ -350,7 +396,8 @@ public class Node extends BasicServer {
 				// if connection breaks, it means we need to block on the
 				// tracking
 				// server
-				LoggingUtils.logError(logger, e, "Error in communicating with tracker server");
+				LoggingUtils.logError(logger, e,
+						"Error in communicating with tracker server");
 				this.trackingServerUnavlblBlock();
 				checkIfBlockedAndAct("findFileOnTracker, findFile=" + fileName);
 			}
@@ -359,12 +406,15 @@ public class Node extends BasicServer {
 		return foundPeers;
 	}
 
-	private synchronized Collection<? extends Machine> getPeersFromCache(String fileName) {
+	private synchronized Collection<? extends Machine> getPeersFromCache(
+			String fileName) {
 		return this.filesServersCache.get(fileName);
 	}
 
-	private synchronized void updateFileServerCache(String fileName, List<Machine> foundPeers) {
-		HashSet<Machine> existingPeersForFile = this.filesServersCache.get(fileName);
+	private synchronized void updateFileServerCache(String fileName,
+			List<Machine> foundPeers) {
+		HashSet<Machine> existingPeersForFile = this.filesServersCache
+				.get(fileName);
 		if (existingPeersForFile == null) {
 			existingPeersForFile = new HashSet<Machine>();
 		}
@@ -375,11 +425,15 @@ public class Node extends BasicServer {
 
 	}
 
-	private void calculateAndAddChecksums(List<String> fileNamesToSend) throws Exception {
+	private void calculateAndAddChecksums(List<String> fileNamesToSend)
+			throws Exception {
 		for (String fileName : fileNamesToSend) {
 			// as the file has come here maybe it has updated modified
-			byte[] checkSum = Utils.createChecksum(directoryToWatchAndSave + fileName, testChecksum);
-			LoggingUtils.logDebug(logger, "Created checksum =%s for the File =%s", Arrays.toString(checkSum), fileName);
+			byte[] checkSum = Utils.createChecksum(directoryToWatchAndSave
+					+ fileName, testChecksum);
+			LoggingUtils.logDebug(logger,
+					"Created checksum =%s for the File =%s",
+					Arrays.toString(checkSum), fileName);
 			myFilesAndChecksums.put(fileName, checkSum);
 		}
 
@@ -387,13 +441,17 @@ public class Node extends BasicServer {
 
 	private void checkIfBlockedAndAct(String message) {
 		while (trackingServerUnavlblBlocked) {
-			LoggingUtils.logInfo(logger,
-					"As tracking server is unavailable we are blocking on this call. Additional message = %s", message);
+			LoggingUtils
+					.logInfo(
+							logger,
+							"As tracking server is unavailable we are blocking on this call. Additional message = %s",
+							message);
 			try {
 				Thread.sleep(NodeProps.UNAVAILABLE_PEER_SERVER_BLOCKED_TIME);
 			} catch (InterruptedException e) {
-				LoggingUtils.logError(logger, e,
-						"Interrupt error while being server unavlbl block, will retry to sleep");
+				LoggingUtils
+						.logError(logger, e,
+								"Interrupt error while being server unavlbl block, will retry to sleep");
 			}
 		}
 	}
@@ -407,22 +465,32 @@ public class Node extends BasicServer {
 	 */
 	public int getLoadFromPeer(Machine peer) throws IOException {
 		int load = Integer.MAX_VALUE;
-		StringBuilder getLoadMessage = new StringBuilder(SharedConstants.NODE_REQUEST_TO_NODE.GET_LOAD.name());
-		getLoadMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append("MACHINE")
-				.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(this.myInfo);
+		StringBuilder getLoadMessage = new StringBuilder(
+				SharedConstants.NODE_REQUEST_TO_NODE.GET_LOAD.name());
+		getLoadMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR)
+				.append("MACHINE")
+				.append(SharedConstants.COMMAND_VALUE_SEPARATOR)
+				.append(this.myInfo);
 
 		byte[] awqReturn = null;
 		try {
-			awqReturn = TCPClient.sendData(peer, myInfo,
-					Utils.stringToByte(getLoadMessage.toString(), NodeProps.ENCODING));
+			awqReturn = TCPClient.sendData(peer, myInfo, Utils.stringToByte(
+					getLoadMessage.toString(), NodeProps.ENCODING));
 			String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
-			String[] brokenOnCommandSeparator = Utils.splitCommandIntoFragments(awqStr);
-			if (brokenOnCommandSeparator[0].startsWith(SharedConstants.COMMAND_SUCCESS)) {
+			String[] brokenOnCommandSeparator = Utils
+					.splitCommandIntoFragments(awqStr);
+			if (brokenOnCommandSeparator[0]
+					.startsWith(SharedConstants.COMMAND_SUCCESS)) {
 				load = Integer.parseInt(brokenOnCommandSeparator[1]);
 			}
 			return load;
 		} catch (IOException e) {
-			LoggingUtils.logError(logger, e, "Error in communicating with peer =%s while asking for load", peer);
+			LoggingUtils
+					.logError(
+							logger,
+							e,
+							"Error in communicating with peer =%s while asking for load",
+							peer);
 			// the parent method will handle the removal of this peer from the
 			// server
 			throw e;
@@ -439,38 +507,51 @@ public class Node extends BasicServer {
 	 * @return
 	 * @throws IOException
 	 */
-	public boolean updateFileList(FILES_UPDATE_MESSAGE_TYPE updateType, List<String> filesToSend) throws IOException {
+	public boolean updateFileList(FILES_UPDATE_MESSAGE_TYPE updateType,
+			List<String> filesToSend) throws IOException {
 		StringBuilder updateFileListMessage = new StringBuilder();
 		switch (updateType) {
 		case COMPLETE:
-			updateFileListMessage.append(SharedConstants.NODE_REQUEST_TO_SERVER.FILE_LIST.name());
+			updateFileListMessage
+					.append(SharedConstants.NODE_REQUEST_TO_SERVER.FILE_LIST
+							.name());
 			break;
 		case ADDED:
-			updateFileListMessage.append(SharedConstants.NODE_REQUEST_TO_SERVER.ADDED_FILE_LIST.name());
+			updateFileListMessage
+					.append(SharedConstants.NODE_REQUEST_TO_SERVER.ADDED_FILE_LIST
+							.name());
 			break;
 		}
 		/**
 		 * FILE_LIST=[f1;f2;f3]|MACHINE=[M1]
 		 */
-		StringBuilder fileListBuilder = new StringBuilder(SharedConstants.COMMAND_LIST_STARTER);
+		StringBuilder fileListBuilder = new StringBuilder(
+				SharedConstants.COMMAND_LIST_STARTER);
 		for (String file : filesToSend) {
-			fileListBuilder.append(file).append(SharedConstants.COMMAND_LIST_SEPARATOR);
+			fileListBuilder.append(file).append(
+					SharedConstants.COMMAND_LIST_SEPARATOR);
 		}
 		fileListBuilder.append(SharedConstants.COMMAND_LIST_END);
-		updateFileListMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR).append(fileListBuilder.toString());
-		updateFileListMessage.append(SharedConstants.COMMAND_PARAM_SEPARATOR).append("MACHINE")
+		updateFileListMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR)
+				.append(fileListBuilder.toString());
+		updateFileListMessage.append(SharedConstants.COMMAND_PARAM_SEPARATOR)
+				.append("MACHINE")
 				.append(SharedConstants.COMMAND_VALUE_SEPARATOR);
 		updateFileListMessage.append(myInfo);
 
 		byte[] awqReturn = null;
 		try {
-			awqReturn = TCPClient.sendData(myTrackingServer, myInfo,
-					Utils.stringToByte(updateFileListMessage.toString(), NodeProps.ENCODING));
+			awqReturn = TCPClient.sendData(myTrackingServer, myInfo, Utils
+					.stringToByte(updateFileListMessage.toString(),
+							NodeProps.ENCODING));
 			String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
-			String[] brokenOnCommandSeparator = awqStr.split(SharedConstants.COMMAND_PARAM_SEPARATOR);
-			return brokenOnCommandSeparator[0].equals(SharedConstants.COMMAND_SUCCESS);
+			String[] brokenOnCommandSeparator = awqStr
+					.split(SharedConstants.COMMAND_PARAM_SEPARATOR);
+			return brokenOnCommandSeparator[0]
+					.equals(SharedConstants.COMMAND_SUCCESS);
 		} catch (IOException e) {
-			LoggingUtils.logError(logger, e, "Error in communicating with tracker server");
+			LoggingUtils.logError(logger, e,
+					"Error in communicating with tracker server");
 			this.trackingServerUnavlblBlock();
 			throw e;
 		}
@@ -485,15 +566,20 @@ public class Node extends BasicServer {
 	 * @return
 	 * @throws IOException this means that the Tracking Sever is down. Need to act by blocking
 	 */
-	public void downloadFileFromPeer(String fileName, List<PeerMachine> avlblPeers) {
+	public void downloadFileFromPeer(String fileName,
+			List<PeerMachine> avlblPeers) {
 		removeIfMyMachineExistsInPeers(avlblPeers);
 		if (avlblPeers.size() > 0) {
-			DownloadStatus downloadStatus = new DownloadStatus(fileName, avlblPeers);
-			LoggingUtils.logInfo(logger, "download status for file =%s and peers = %s", fileName, avlblPeers);
+			DownloadStatus downloadStatus = new DownloadStatus(fileName,
+					avlblPeers);
+			LoggingUtils.logInfo(logger,
+					"download status for file =%s and peers = %s", fileName,
+					avlblPeers);
 			this.unfinishedDownloadStatus.add(downloadStatus);
 			downloadService.acceptDownloadRequest(downloadStatus);
 		} else {
-			LoggingUtils.logInfo(logger, "peer list is empty for file = %s", fileName);
+			LoggingUtils.logInfo(logger, "peer list is empty for file = %s",
+					fileName);
 		}
 
 	}
@@ -502,14 +588,16 @@ public class Node extends BasicServer {
 		Iterator<PeerMachine> itr = avlblPeers.iterator();
 		while (itr.hasNext()) {
 			PeerMachine iterM = itr.next();
-			if (iterM.getIP().equals(myInfo.getIP()) && iterM.getPort() == myInfo.getPort()) {
+			if (iterM.getIP().equals(myInfo.getIP())
+					&& iterM.getPort() == myInfo.getPort()) {
 				itr.remove();
 			}
 		}
 
 	}
 
-	public List<String> getFilesFromTheWatchedDirectory(long lastUpdateTime, boolean sendCompleteList) {
+	public List<String> getFilesFromTheWatchedDirectory(long lastUpdateTime,
+			boolean sendCompleteList) {
 		List<String> listOfFiles = new ArrayList<String>();
 		File dir = new File(directoryToWatchAndSave);
 		File[] fileListing = dir.listFiles();
@@ -518,8 +606,11 @@ public class Node extends BasicServer {
 				listOfFiles.add(f.getName());
 			}
 		}
-		LoggingUtils.logInfo(logger, "Sending fileList = %s from getFilesFromTheWatchedDirectory for peer=%s",
-				listOfFiles, myInfo);
+		LoggingUtils
+				.logInfo(
+						logger,
+						"Sending fileList = %s from getFilesFromTheWatchedDirectory for peer=%s",
+						listOfFiles, myInfo);
 		return listOfFiles;
 	}
 
@@ -535,9 +626,11 @@ public class Node extends BasicServer {
 		// functioning
 		// Optional still allow peers to talk to each other.
 		this.trackingServerUnavlblBlocked = true;
-		LoggingUtils.logInfo(logger,
-				"Blocked the peer as Tracking server is unavailable; trackingServerUnavlblBlocked=%s",
-				trackingServerUnavlblBlocked);
+		LoggingUtils
+				.logInfo(
+						logger,
+						"Blocked the peer as Tracking server is unavailable; trackingServerUnavlblBlocked=%s",
+						trackingServerUnavlblBlocked);
 	}
 
 	@Override
@@ -556,10 +649,12 @@ public class Node extends BasicServer {
 	public static void showUsage() {
 		System.out.println("\n\nUsage:");
 		System.out.println("Find: " + COMMAND_FIND + " <file name>");
-		System.out.println("Download: " + COMMAND_DOWNLAOD + " <file name> [<machine list>]");
+		System.out.println("Download: " + COMMAND_DOWNLAOD
+				+ " <file name> [<machine list>]");
 		System.out.println("eg. ");
 		System.out.println(COMMAND_DOWNLAOD + " xyz.txt");
-		System.out.println(COMMAND_DOWNLAOD + " abc.txt node1:1000|node2:1000|node2:2000");
+		System.out.println(COMMAND_DOWNLAOD
+				+ " abc.txt node1:1000|node2:1000|node2:2000");
 		System.out.println("Stop: " + COMMAND_STOP);
 	}
 
@@ -569,18 +664,25 @@ public class Node extends BasicServer {
 		int serverPort = 0;
 		int myPort = 0;
 		int machineId = 0;
+		String serverIp = null;
 		if (args.length == 5) {
 			try {
 				serverPort = Integer.parseInt(args[1]);
 				myPort = Integer.parseInt(args[2]);
 				machineId = Integer.parseInt(args[4]);
-				if (!Utils.isValidPort(myPort) || !Utils.isValidPort(serverPort)) {
+				if (!Utils.isValidPort(myPort)
+						|| !Utils.isValidPort(serverPort)) {
 					System.out.println("Invalid port");
 					showStartUsage();
 					return;
 				}
+				serverIp = InetAddress.getByName(args[0]).getHostAddress();
 			} catch (NumberFormatException nfe) {
 				System.out.println("Invalid port or machine Id");
+				showStartUsage();
+				return;
+			} catch (UnknownHostException e) {
+				System.out.println("Invalid hostname");
 				showStartUsage();
 				return;
 			}
@@ -588,27 +690,32 @@ public class Node extends BasicServer {
 			showStartUsage();
 			return;
 		}
-		Machine trackingServer = new Machine(args[0], serverPort);
+		Machine trackingServer = new Machine(serverIp, serverPort);
 		String dirToWatch = getDirToWatch(args[3]);
 		Node n = null;
 		try {
 			n = new Node(myPort, 10, trackingServer, dirToWatch, machineId);
 			n.start();
 			System.out.println("Starting node =" + n.myInfo);
-			BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+			BufferedReader reader = new BufferedReader(new InputStreamReader(
+					System.in));
 			boolean stopped = false;
 			while (!stopped) {
 				showUsage();
 				String command = reader.readLine();
 				if (command.startsWith(COMMAND_FIND)) {
 					if (command.length() > COMMAND_FIND.length()) {
-						String fileToFind = command.substring(COMMAND_FIND.length()).trim();
+						String fileToFind = command.substring(
+								COMMAND_FIND.length()).trim();
 						if (!Utils.isEmpty(fileToFind)) {
-							List<Machine> machinesWithFile = n.findFileOnTracker(fileToFind, null);
+							List<Machine> machinesWithFile = n
+									.findFileOnTracker(fileToFind, null);
 							for (Machine m : machinesWithFile) {
 								StringBuilder builder = new StringBuilder();
-								builder.append(Machine.FORMAT_START).append(m.getIP())
-										.append(SharedConstants.COMMAND_LIST_SEPARATOR).append(m.getPort())
+								builder.append(Machine.FORMAT_START)
+										.append(m.getIP())
+										.append(SharedConstants.COMMAND_LIST_SEPARATOR)
+										.append(m.getPort())
 										.append(Machine.FORMAT_END);
 								System.out.println(builder.toString());
 							}
@@ -616,7 +723,8 @@ public class Node extends BasicServer {
 					}
 				} else if (command.startsWith(COMMAND_DOWNLAOD)) {
 					if (command.length() > COMMAND_DOWNLAOD.length()) {
-						String fileToFind = command.substring(COMMAND_DOWNLAOD.length()).trim();
+						String fileToFind = command.substring(
+								COMMAND_DOWNLAOD.length()).trim();
 						if (!Utils.isEmpty(fileToFind)) {
 							n.findAndDownloadFile(fileToFind);
 						}
@@ -639,16 +747,22 @@ public class Node extends BasicServer {
 	public void findAndDownloadFile(String fileToFind) {
 		if (Utils.isNotEmpty(fileToFind)) {
 			if (fileNotExistsOnLocal(fileToFind)) {
-				List<Machine> machinesWithFile = findFileOnTracker(fileToFind, null);
+				List<Machine> machinesWithFile = findFileOnTracker(fileToFind,
+						null);
 				if (machinesWithFile != null) {
 					List<PeerMachine> avlblPeers = getPeerMachineList(machinesWithFile);
 					System.out.println(avlblPeers);
 					downloadFileFromPeer(fileToFind, avlblPeers);
-					LoggingUtils.logInfo(logger, "Queued the file=%s for download from the following peers=%s",
-							fileToFind, avlblPeers);
+					LoggingUtils
+							.logInfo(
+									logger,
+									"Queued the file=%s for download from the following peers=%s",
+									fileToFind, avlblPeers);
 				}
 			} else {
-				LoggingUtils.logInfo(logger, "Did not download file=%s as it exists on local", fileToFind);
+				LoggingUtils.logInfo(logger,
+						"Did not download file=%s as it exists on local",
+						fileToFind);
 			}
 
 		} else {
@@ -665,16 +779,24 @@ public class Node extends BasicServer {
 		List<PeerMachine> peers = new LinkedList<PeerMachine>();
 		for (Machine m : machinesWithFile) {
 			try {
-				peers.add(new PeerMachine(m.getIP(), m.getPort(), getLatency(m), getLoadFromPeer(m)));
+				peers.add(new PeerMachine(m.getIP(), m.getPort(),
+						getLatency(m), getLoadFromPeer(m)));
 			} catch (IOException e) {
-				LoggingUtils.logError(logger, e, "Did not add peer = %s as it did not return load", m);
+				LoggingUtils.logError(logger, e,
+						"Did not add peer = %s as it did not return load", m);
 				// but we need to ask the server to delete this peer
 				List<PeerMachine> failedListToServer = new LinkedList<PeerMachine>();
-				failedListToServer.add(new PeerMachine(m.getIP(), m.getPort(), 0, 0));
+				failedListToServer.add(new PeerMachine(m.getIP(), m.getPort(),
+						0, 0));
 				try {
 					sendFailedPeerMessageToTrackingServer(failedListToServer);
 				} catch (IOException e1) {
-					LoggingUtils.logError(logger, e, "Could not communicate with Tracking server NEED TO BLOCK", m);
+					LoggingUtils
+							.logError(
+									logger,
+									e,
+									"Could not communicate with Tracking server NEED TO BLOCK",
+									m);
 				}
 			}
 		}
@@ -695,19 +817,23 @@ public class Node extends BasicServer {
 
 			do {
 				try {
-					List<String> fileNamesToSend = getFilesFromTheWatchedDirectory(lastUpdateTime,
-							sendCompleteStatusOnNextAttempt);
+					List<String> fileNamesToSend = getFilesFromTheWatchedDirectory(
+							lastUpdateTime, sendCompleteStatusOnNextAttempt);
 					sendCompleteStatusOnNextAttempt = false;
-					if (fileNamesToSend.size() > 0 || trackingServerUnavlblBlocked) {
+					if (fileNamesToSend.size() > 0
+							|| trackingServerUnavlblBlocked) {
 						calculateAndAddChecksums(fileNamesToSend);
-						updateFileList(FILES_UPDATE_MESSAGE_TYPE.COMPLETE, fileNamesToSend);
+						updateFileList(FILES_UPDATE_MESSAGE_TYPE.COMPLETE,
+								fileNamesToSend);
 						if (Node.this.trackingServerUnavlblBlocked) {
 							Node.this.trackingServerUnavlblBlocked = false;
 							sendCompleteStatusOnNextAttempt = true;
-							LoggingUtils.logInfo(logger,
-									"Restarted communication with tracking server and hence turned trackingServerUnavlblBlocked=%s."
-											+ "Also will send the server the entire information again",
-									trackingServerUnavlblBlocked);
+							LoggingUtils
+									.logInfo(
+											logger,
+											"Restarted communication with tracking server and hence turned trackingServerUnavlblBlocked=%s."
+													+ "Also will send the server the entire information again",
+											trackingServerUnavlblBlocked);
 						}
 					}
 					lastUpdateTime = System.currentTimeMillis();
@@ -721,17 +847,22 @@ public class Node extends BasicServer {
 					if (!sendCompleteStatusOnNextAttempt) {
 						try {
 							synchronized (updateThreadMonitorObj) {
-								updateThreadMonitorObj.wait(NodeProps.HEARTBEAT_INTERVAL);
+								updateThreadMonitorObj
+										.wait(NodeProps.HEARTBEAT_INTERVAL);
 							}
 						} catch (InterruptedException e) {
 							if (!shutdownInvoked) {
-								logger.error("Interrupted Exception caught, stopping updater thread", e);
+								logger.error(
+										"Interrupted Exception caught, stopping updater thread",
+										e);
 							}
 
 						}
 					}
 				} catch (Exception e) {
-					logger.error("Could not contact TrackigServer from the Update thread need to BLOCk", e);
+					logger.error(
+							"Could not contact TrackigServer from the Update thread need to BLOCk",
+							e);
 					Node.this.trackingServerUnavlblBlock();
 					/*
 					 * this will block anyone else from entering the server but
@@ -787,7 +918,8 @@ public class Node extends BasicServer {
 				 */
 				while (!shutdownInvoked) {
 					while (!unfinishedDownloadStatus.isEmpty()) {
-						DownloadStatus dwnStatus = unfinishedDownloadStatus.peek();
+						DownloadStatus dwnStatus = unfinishedDownloadStatus
+								.peek();
 						if (dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.NOT_STARTED
 								|| dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.STARTED) {
 							break;
@@ -795,17 +927,23 @@ public class Node extends BasicServer {
 						// either report or remove
 						dwnStatus = unfinishedDownloadStatus.poll();
 						if (dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.DONE) {
-							LoggingUtils.logInfo(logger, "Finished download of the task =%s", dwnStatus);
+							LoggingUtils.logInfo(logger,
+									"Finished download of the task =%s",
+									dwnStatus);
 							// TODO Update the avgTimeToDownloadFile
 							if (dwnStatus.getEndTimeOfDownloadFile() != SharedConstants.FILE_FAILED_TIME) {
 								// skip this time as the file was not downloaded
 								// correctly
-								updateAverageTimeToDownloadFile(dwnStatus.getEndTimeOfDownloadFile()
-										- dwnStatus.getStartTimeOfDownloadFile());
+								updateAverageTimeToDownloadFile(dwnStatus
+										.getEndTimeOfDownloadFile()
+										- dwnStatus
+												.getStartTimeOfDownloadFile());
 
 							}
 						} else if (dwnStatus.getDownloadActivityStatus() == DOWNLOAD_ACTIVITY.FAILED) {
-							LoggingUtils.logInfo(logger, "Failed download of the task =%s", dwnStatus);
+							LoggingUtils.logInfo(logger,
+									"Failed download of the task =%s",
+									dwnStatus);
 						}
 						/*
 						 * For the other statuses we might need to remove them
@@ -836,18 +974,24 @@ public class Node extends BasicServer {
 
 		}
 
-		private void sendServerFailedPeerInfo(DownloadStatus dwnStatus) throws IOException {
-			Map<PeerMachine, PEER_DOWNLOAD_ACTIVITY> activityStatus = dwnStatus.getPeersToDownloadFrom();
+		private void sendServerFailedPeerInfo(DownloadStatus dwnStatus)
+				throws IOException {
+			Map<PeerMachine, PEER_DOWNLOAD_ACTIVITY> activityStatus = dwnStatus
+					.getPeersToDownloadFrom();
 			List<PeerMachine> machinesToReport = new LinkedList<PeerMachine>();
-			for (Entry<PeerMachine, PEER_DOWNLOAD_ACTIVITY> e : activityStatus.entrySet()) {
+			for (Entry<PeerMachine, PEER_DOWNLOAD_ACTIVITY> e : activityStatus
+					.entrySet()) {
 				if (e.getValue() == PEER_DOWNLOAD_ACTIVITY.UNREACHABLE) {
 					machinesToReport.add(e.getKey());
 				}
 			}
 
 			if (machinesToReport.size() > 0) {
-				LoggingUtils.logInfo(logger, "Some peers =%s unreachable, send to server OPTIONAL. \ndwnStatus=%s",
-						machinesToReport, dwnStatus);
+				LoggingUtils
+						.logInfo(
+								logger,
+								"Some peers =%s unreachable, send to server OPTIONAL. \ndwnStatus=%s",
+								machinesToReport, dwnStatus);
 				sendFailedPeerMessageToTrackingServer(machinesToReport);
 			}
 
@@ -864,9 +1008,11 @@ public class Node extends BasicServer {
 		return this.unfinishedDownloadStatus.size() > 0;
 	}
 
-	private void sendFailedPeerMessageToTrackingServer(List<PeerMachine> machinesToReport) throws IOException {
+	private void sendFailedPeerMessageToTrackingServer(
+			List<PeerMachine> machinesToReport) throws IOException {
 		checkIfBlockedAndAct("sendFailedPeerMessageToTrackingServer");
-		StringBuilder failedPeersMessage = new StringBuilder(SharedConstants.NODE_REQUEST_TO_SERVER.FAILED_PEERS.name());
+		StringBuilder failedPeersMessage = new StringBuilder(
+				SharedConstants.NODE_REQUEST_TO_SERVER.FAILED_PEERS.name());
 		failedPeersMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR);
 		if (machinesToReport != null) {
 			for (PeerMachine p : machinesToReport) {
@@ -877,16 +1023,23 @@ public class Node extends BasicServer {
 		byte[] awqReturn = null;
 		while (true) {
 			try {
-				awqReturn = TCPClient.sendData(myTrackingServer, myInfo,
-						Utils.stringToByte(failedPeersMessage.toString(), NodeProps.ENCODING));
-				String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
+				awqReturn = TCPClient.sendData(myTrackingServer, myInfo, Utils
+						.stringToByte(failedPeersMessage.toString(),
+								NodeProps.ENCODING));
+				String awqStr = Utils.byteToString(awqReturn,
+						NodeProps.ENCODING);
 				// return expected as ""
-				String[] brokenOnCommandSeparator = Utils.splitCommandIntoFragments(awqStr);
-				if (brokenOnCommandSeparator[0].startsWith(SharedConstants.COMMAND_SUCCESS)) {
-					LoggingUtils.logInfo(logger, "Tracking Server updated with the failed peer info");
+				String[] brokenOnCommandSeparator = Utils
+						.splitCommandIntoFragments(awqStr);
+				if (brokenOnCommandSeparator[0]
+						.startsWith(SharedConstants.COMMAND_SUCCESS)) {
+					LoggingUtils
+							.logInfo(logger,
+									"Tracking Server updated with the failed peer info");
 				}
 			} catch (IOException e) {
-				LoggingUtils.logError(logger, e, "Error in communicating with tracker server");
+				LoggingUtils.logError(logger, e,
+						"Error in communicating with tracker server");
 				this.trackingServerUnavlblBlock();
 				checkIfBlockedAndAct("sendFailedPeerMessageToTrackingServer");
 			}
