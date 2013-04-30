@@ -1,0 +1,84 @@
+<testsuite>
+	<rounds>
+		<round>
+			<name>MixedTestCases</name>
+			<operations>
+				<operation>
+					<sno>1</sno>
+					<!-- launchPeers would launch so many peers -->
+					<name>launchPeers</name>
+					<params>
+						<entry>
+							<string>numberOfPeers</string>
+							<string>10</string>
+						</entry>
+						<entry>
+							<string>numThreads</string>
+							<string>10</string>
+						</entry>
+						<entry>
+							<string>dirToWatch</string>
+							<string>D:\\p2p\\peers\\</string>
+						</entry>
+					</params>
+				</operation>
+				<operation>
+					<sno>2</sno>
+					<!-- this will download a particular file on a random/particular peer -->
+					<name>downloadFile</name>
+					<params>
+						<entry>
+							<string>machineId</string>
+							<string>1</string>
+						</entry>
+						<entry>
+							<string>filesToDownload</string>
+							<string>1</string>
+						</entry>
+					</params>
+				</operation>
+				<operation>
+					<sno>3</sno>
+					<!-- this will download a particular file on a random/particular peer -->
+					<name>downloadFile</name>
+					<params>
+						<entry>
+							<string>machineId</string>
+							<string>2</string>
+						</entry>
+						<entry>
+							<string>filesToDownload</string>
+							<string>1</string>
+						</entry>
+					</params>
+				</operation>
+				<operation>
+					<sno>4</sno>
+					<!-- this will download a particular file on a random/particular peer -->
+					<name>downloadFile</name>
+					<params>
+						<entry>
+							<string>machineId</string>
+							<string>3</string>
+						</entry>
+						<entry>
+							<string>filesToDownload</string>
+							<string>1</string>
+						</entry>
+					</params>
+				</operation>
+				<operation>
+					<sno>5</sno>
+					<!-- this will download a particular file on a random/particular peer -->
+					<name>downloadFileRandom</name>
+					<params>
+						<entry>
+							<string>individualDownloadsToBegin</string>
+							<string>2</string>
+						</entry>
+					</params>
+				</operation>
+			</operations>
+		</round>
+	</rounds>
+</testsuite>
