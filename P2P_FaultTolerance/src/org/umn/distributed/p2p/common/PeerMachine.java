@@ -53,9 +53,8 @@ public class PeerMachine extends Machine {
 
 	@Override
 	public String toString() {
-		return "PeerMachine [latencyMillis=" + latencyMillis + ", currentLoad="
-				+ currentLoad + ", avgTimeToServiceRequest="
-				+ avgTimeToServiceRequest + ", latencyWeight=" + latencyWeight
+		return "PeerMachine [latencyMillis=" + latencyMillis + ", currentLoad=" + currentLoad
+				+ ", avgTimeToServiceRequest=" + avgTimeToServiceRequest + ", latencyWeight=" + latencyWeight
 				+ ", currentLoadWeight=" + currentLoadWeight + "]";
 	}
 
@@ -63,8 +62,26 @@ public class PeerMachine extends Machine {
 	 * Default policy latencyWeight is 10 times less important than
 	 * currentLoadWeight
 	 */
-	double latencyWeight = NodeProps.peerSelectionLatencyWeight; // 0.01
-	double currentLoadWeight = NodeProps.peerSelectionLoadWeight; // 0.1
+	public double latencyWeight = NodeProps.peerSelectionLatencyWeight; // 0.01
+	public double currentLoadWeight = NodeProps.peerSelectionLoadWeight; // 0.1
+
+	public static double getPeerWeight(PeerMachine machine) {
+		return machine.getCurrentLoad() * machine.currentLoadWeight + machine.getLatencyMillis()
+				* machine.latencyMillis;
+	}
+
+	/**
+	 * <code>
+	 * machine.getCurrentLoad() * machine.getAvgTimeToServiceRequest() == probabilistic time when server is free
+	 * </code>
+	 * 
+	 * @param machine
+	 * @return
+	 */
+	public static double getPeerWeight2(PeerMachine machine) {
+		return machine.getCurrentLoad() * machine.getAvgTimeToServiceRequest() * machine.currentLoadWeight
+				+ machine.getLatencyMillis() * machine.latencyMillis;
+	}
 
 	public static final Comparator<PeerMachine> PEER_SELECTION_POLICY = new Comparator<PeerMachine>() {
 		/**
@@ -77,23 +94,6 @@ public class PeerMachine extends Machine {
 			return Double.compare(peer1Weight, peer2Weight);
 		}
 
-		private double getPeerWeight(PeerMachine machine) {
-			return machine.getCurrentLoad() * machine.currentLoadWeight + machine.getLatencyMillis()
-					* machine.latencyMillis;
-		}
-
-		/**
-		 * <code>
-		 * machine.getCurrentLoad() * machine.getAvgTimeToServiceRequest() == probabilistic time when server is free
-		 * </code>
-		 * 
-		 * @param machine
-		 * @return
-		 */
-		private double getPeerWeight2(PeerMachine machine) {
-			return machine.getCurrentLoad() * machine.getAvgTimeToServiceRequest() * machine.currentLoadWeight
-					+ machine.getLatencyMillis() * machine.latencyMillis;
-		}
 	};
 
 }

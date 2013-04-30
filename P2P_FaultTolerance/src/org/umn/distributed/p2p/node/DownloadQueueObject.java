@@ -64,12 +64,21 @@ public class DownloadQueueObject implements Runnable {
 		this.myMachineInfo = myMachineInfo;
 		this.failedTaskQRef = failedTaskQueue;
 		this.nodeSpecificOutputFolder = nodeSpecificOutputFolder;
+		LoggingUtils.logInfo(logger, "Found Peer List before sort by Latency Algorithm = %s", this.peersToDownloadFrom);
 		Collections.sort(this.peersToDownloadFrom, PeerMachine.PEER_SELECTION_POLICY);
+		displayPeerMachinesWithLatecyNumbers(this.peersToDownloadFrom);
 		this.activeDownloadCount = activeDownloadCount;
 		this.updateThreadMonitorObj = updateThreadMonitorObj;
 
 		downloadErrorMap.put(DOWNLOAD_ERRORS.FILE_CORRUPT, 0);
 		downloadErrorMap.put(DOWNLOAD_ERRORS.PEER_UNREACHABLE, 0);
+	}
+
+	private void displayPeerMachinesWithLatecyNumbers(List<PeerMachine> peersToDownloadFrom2) {
+		LoggingUtils.logInfo(logger, "#############Peer Selection Algorithm result in sorted order");
+		for (PeerMachine p : peersToDownloadFrom2) {
+			LoggingUtils.logInfo(logger, "Peer = %s, WeightedLatency = %s", p, PeerMachine.getPeerWeight(p));
+		}
 	}
 
 	private List<PeerMachine> convertToList(Map<PeerMachine, PEER_DOWNLOAD_ACTIVITY> mapPeerMachineDownloadStatus) {
@@ -108,7 +117,8 @@ public class DownloadQueueObject implements Runnable {
 						// An exception here means that the peer was unreachable
 						// now,
 						// even after the load stage it responded
-						LoggingUtils.logError(logger, e, "Unrecorded exception, will add this machine =%s to failed set",m);
+						LoggingUtils.logError(logger, e,
+								"Unrecorded exception, will add this machine =%s to failed set", m);
 						this.failedMachines.add(m);
 						this.peerDownloadStatus.put(m, PEER_DOWNLOAD_ACTIVITY.UNREACHABLE);
 					}
