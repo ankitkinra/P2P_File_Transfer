@@ -51,6 +51,12 @@ public class PeerMachine extends Machine {
 		this.avgTimeToServiceRequest = avgTimeToServiceRequest;
 	}
 
+	public String getString() {
+		return "Node [latencyMillis=" + latencyMillis + ", currentLoad="
+				+ currentLoad + ", avgTimeToServiceRequest="
+				+ avgTimeToServiceRequest + "]";
+	}
+
 	/**
 	 * Default policy latencyWeight is 10 times less important than
 	 * currentLoadWeight

@@ -41,6 +41,7 @@ public class Node extends BasicServer {
 	private static final String COMMAND_STOP = "stop";
 	private static final String COMMAND_FIND = "find";
 	private static final String COMMAND_DOWNLAOD = "download";
+	private static final String COMMAND_DOWNLAOD_SPECIFIC = "sdownload";
 
 	protected int port;
 	private final AtomicInteger currentUploads = new AtomicInteger(0);
@@ -616,12 +617,12 @@ public class Node extends BasicServer {
 
 	@Override
 	protected void shutdownSpecific() {
-		LoggingUtils.logInfo(logger, "Summary = %s", showSummary()) ;
+		LoggingUtils.logInfo(logger, "Summary = %s", showSummary());
 		this.updateServerThread.invokeShutdown();
 		this.downloadService.stop();
 		this.unfinishedTaskMonitor.invokeShutdown();
 	}
-	
+
 	public String showSummary() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("Node [currentUploads=");
@@ -737,15 +738,14 @@ public class Node extends BasicServer {
 						if (!Utils.isEmpty(fileToFind)) {
 							List<Machine> machinesWithFile = n
 									.findFileOnTracker(fileToFind, null);
-							System.out.println("File " + fileToFind + " found at:");
-							for (Machine m : machinesWithFile) {
-								StringBuilder builder = new StringBuilder();
-								builder.append(Machine.FORMAT_START)
-										.append(m.getIP())
-										.append(SharedConstants.COMMAND_LIST_SEPARATOR)
-										.append(m.getPort())
-										.append(Machine.FORMAT_END);
-								System.out.println(builder.toString());
+							List<PeerMachine> avlblPeers = n
+									.getPeerMachineList(machinesWithFile);
+							System.out.println("File " + fileToFind
+									+ " found at:");
+							int indx = 1;
+							for (PeerMachine m : avlblPeers) {
+								System.out.println(indx + ". ");
+								System.out.println(m.getString());
 							}
 						}
 					}
@@ -755,7 +755,37 @@ public class Node extends BasicServer {
 								COMMAND_DOWNLAOD.length()).trim();
 						if (!Utils.isEmpty(fileToFind)) {
 							n.findAndDownloadFile(fileToFind);
-							System.out.println("File " + fileToFind + " downloaded.");
+						}
+					}
+				} else if (command.startsWith(COMMAND_DOWNLAOD_SPECIFIC)) {
+					if (command.length() > COMMAND_DOWNLAOD_SPECIFIC.length()) {
+						String fileToFind = command.substring(
+								COMMAND_DOWNLAOD_SPECIFIC.length()).trim();
+						if (!Utils.isEmpty(fileToFind)) {
+							List<Machine> machinesWithFile = n
+									.findFileOnTracker(fileToFind, null);
+							List<PeerMachine> avlblPeers = n
+									.getPeerMachineList(machinesWithFile);
+							while (true) {
+								System.out.println("File " + fileToFind
+										+ " found at:");
+								int indx = 1;
+								for (PeerMachine m : avlblPeers) {
+									System.out.println(indx + ". ");
+									System.out.println(m.getString());
+								}
+								System.out.println("Node to download from:");
+								command = reader.readLine();
+								try {
+									int id = Integer.parseInt(command);
+									if (id < avlblPeers.size() && id >= 0) {
+										n.findAndDownloadFile(fileToFind,
+												avlblPeers.get(id));
+									}
+								} catch (NumberFormatException nfe) {
+									System.out.println("Invalid index");
+								}
+							}
 						}
 					}
 				} else if (command.startsWith(COMMAND_STOP)) {
@@ -780,7 +810,6 @@ public class Node extends BasicServer {
 						null);
 				if (machinesWithFile != null) {
 					List<PeerMachine> avlblPeers = getPeerMachineList(machinesWithFile);
-					System.out.println(avlblPeers);
 					downloadFileFromPeer(fileToFind, avlblPeers);
 					LoggingUtils
 							.logInfo(
@@ -788,6 +817,29 @@ public class Node extends BasicServer {
 									"Queued the file=%s for download from the following peers=%s",
 									fileToFind, avlblPeers);
 				}
+			} else {
+				LoggingUtils.logInfo(logger,
+						"Did not download file=%s as it exists on local",
+						fileToFind);
+			}
+
+		} else {
+			LoggingUtils.logInfo(logger, "file=%s came as empty", fileToFind);
+		}
+
+	}
+
+	public void findAndDownloadFile(String fileToFind, PeerMachine peer) {
+		if (Utils.isNotEmpty(fileToFind)) {
+			if (fileNotExistsOnLocal(fileToFind)) {
+				List<PeerMachine> avlblPeers = new ArrayList<PeerMachine>();
+				avlblPeers.add(peer);
+				downloadFileFromPeer(fileToFind, avlblPeers);
+				LoggingUtils
+						.logInfo(
+								logger,
+								"Queued the file=%s for download from the following peers=%s",
+								fileToFind, avlblPeers);
 			} else {
 				LoggingUtils.logInfo(logger,
 						"Did not download file=%s as it exists on local",
