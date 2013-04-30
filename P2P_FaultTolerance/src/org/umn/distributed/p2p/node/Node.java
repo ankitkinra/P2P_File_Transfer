@@ -710,6 +710,7 @@ public class Node extends BasicServer {
 						if (!Utils.isEmpty(fileToFind)) {
 							List<Machine> machinesWithFile = n
 									.findFileOnTracker(fileToFind, null);
+							System.out.println("File " + fileToFind + " found at:");
 							for (Machine m : machinesWithFile) {
 								StringBuilder builder = new StringBuilder();
 								builder.append(Machine.FORMAT_START)
@@ -727,6 +728,7 @@ public class Node extends BasicServer {
 								COMMAND_DOWNLAOD.length()).trim();
 						if (!Utils.isEmpty(fileToFind)) {
 							n.findAndDownloadFile(fileToFind);
+							System.out.println("File " + fileToFind + " downloaded.");
 						}
 					}
 				} else if (command.startsWith(COMMAND_STOP)) {
