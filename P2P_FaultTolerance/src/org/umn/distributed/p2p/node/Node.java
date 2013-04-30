@@ -794,15 +794,20 @@ public class Node extends BasicServer {
 					}
 				} else if (command.startsWith(COMMAND_STOP)) {
 					stopped = true;
-					System.out.println("Exiting client.");
+					n.shutdown();
+					System.out.println("Exiting node.");
 				}
 			}
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
+			System.out.println("Exiting");
+			System.exit(1);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.out.println("Exiting");
+			System.exit(1);
 		}
 
 	}
