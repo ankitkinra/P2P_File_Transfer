@@ -569,7 +569,7 @@ public class Node extends BasicServer {
 		int serverPort = 0;
 		int myPort = 0;
 		int machineId = 0;
-		if (args.length == 4) {
+		if (args.length == 5) {
 			try {
 				serverPort = Integer.parseInt(args[1]);
 				myPort = Integer.parseInt(args[2]);
