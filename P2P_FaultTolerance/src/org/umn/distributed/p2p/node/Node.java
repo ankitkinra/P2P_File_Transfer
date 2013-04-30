@@ -614,6 +614,29 @@ public class Node extends BasicServer {
 		}
 
 	}
+	
+	
+	public void deleteFileFromDirectory(String filename){
+		File dir = new File(directoryToWatchAndSave);
+		File[] fileListing = dir.listFiles();
+		for (File f : fileListing) {
+			if (f.getName().equals(filename)) {
+				f.delete();
+				LoggingUtils.logInfo(logger, "Removed file = %s from directory = %s", filename, directoryToWatchAndSave);
+				break;
+			}
+		}
+		
+		if(myFilesAndChecksums.containsKey(filename)){
+			myFilesAndChecksums.remove(filename);
+			LoggingUtils.logInfo(logger, "Removed file = %s from directory = %s", filename, directoryToWatchAndSave);	
+		}
+		
+		synchronized (updateThreadMonitorObj) {
+			updateThreadMonitorObj.notifyAll();
+		}
+		
+	}
 
 	public Set<String> getFilesFromTheWatchedDirectory(boolean sendCompleteList) {
 		return getFilesFromTheWatchedDirectory(0, sendCompleteList);
