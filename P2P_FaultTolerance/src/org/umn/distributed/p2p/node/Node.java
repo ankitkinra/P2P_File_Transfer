@@ -744,8 +744,9 @@ public class Node extends BasicServer {
 									+ " found at:");
 							int indx = 1;
 							for (PeerMachine m : avlblPeers) {
-								System.out.println(indx + ". ");
+								System.out.print(indx + ". ");
 								System.out.println(m.getString());
+								indx++;
 							}
 						}
 					}
@@ -771,16 +772,19 @@ public class Node extends BasicServer {
 										+ " found at:");
 								int indx = 1;
 								for (PeerMachine m : avlblPeers) {
-									System.out.println(indx + ". ");
+									System.out.print(indx + ". ");
 									System.out.println(m.getString());
+									indx++;
 								}
 								System.out.println("Node to download from:");
 								command = reader.readLine();
 								try {
 									int id = Integer.parseInt(command);
+									id--;
 									if (id < avlblPeers.size() && id >= 0) {
 										n.findAndDownloadFile(fileToFind,
 												avlblPeers.get(id));
+										break;
 									}
 								} catch (NumberFormatException nfe) {
 									System.out.println("Invalid index");
