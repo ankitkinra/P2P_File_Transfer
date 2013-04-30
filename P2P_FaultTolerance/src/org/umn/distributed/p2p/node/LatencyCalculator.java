@@ -49,8 +49,8 @@ public class LatencyCalculator {
 	}
 
 	private static abstract class IPSeparator {
-		private static final int LATENCY_MULTIPLIER = 500;
-		private static final int MODULOUS_NUMBER = 50;
+		private static final int LATENCY_MULTIPLIER = 100;
+		private static final int MODULOUS_NUMBER = 20;
 		protected int part1;
 		protected int part2;
 		protected int part3;

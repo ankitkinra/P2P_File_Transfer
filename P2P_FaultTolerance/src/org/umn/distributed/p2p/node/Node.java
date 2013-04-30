@@ -40,7 +40,7 @@ public class Node extends BasicServer {
 	private static final String COMMAND_STOP = "stop";
 	private static final String COMMAND_FIND = "find";
 	private static final String COMMAND_DOWNLAOD = "download";
-	
+
 	protected int port;
 	private final AtomicInteger currentUploads = new AtomicInteger(0);
 	private final AtomicInteger currentDownloads = new AtomicInteger(0);
@@ -74,7 +74,9 @@ public class Node extends BasicServer {
 	private long totalUploadRequestHandled = 0;
 	private long totalDownloadRequested = 0;
 	private HashMap<String, HashSet<Machine>> filesServersCache = new HashMap<String, HashSet<Machine>>();
-	private boolean testChecksum = false; // used to test the failing of checksum
+	private boolean testChecksum = false; // used to test the failing of
+											// checksum
+
 	/*
 	 * private void initLatencyMap() throws IOException { if
 	 * (latencyNumbers.size() == 0) { // get the latency file and add the
@@ -326,8 +328,7 @@ public class Node extends BasicServer {
 			}
 		}
 		byte[] awqReturn = null;
-		//TODO: Kinra check mine changes
-		while(true) {
+		while (true) {
 			try {
 				awqReturn = TCPClient.sendData(myTrackingServer, myInfo,
 						Utils.stringToByte(findFileMessage.toString(), NodeProps.ENCODING));
@@ -337,13 +338,17 @@ public class Node extends BasicServer {
 				if (brokenOnCommandSeparator[0].startsWith(SharedConstants.COMMAND_SUCCESS)) {
 					LoggingUtils.logInfo(logger, "peers =%s found for file=%s", brokenOnCommandSeparator[1], fileName);
 					foundPeers = Machine.parseList(brokenOnCommandSeparator[1]);
+				} else {
+					// empty
+					foundPeers = new LinkedList<Machine>();
 				}
 				if (foundPeers != null && foundPeers.size() > 0) {
 					updateFileServerCache(fileName, foundPeers);
 				}
 				break;
 			} catch (IOException e) {
-				// if connection breaks, it means we need to block on the tracking
+				// if connection breaks, it means we need to block on the
+				// tracking
 				// server
 				LoggingUtils.logError(logger, e, "Error in communicating with tracker server");
 				this.trackingServerUnavlblBlock();
@@ -356,7 +361,6 @@ public class Node extends BasicServer {
 
 	private synchronized Collection<? extends Machine> getPeersFromCache(String fileName) {
 		return this.filesServersCache.get(fileName);
-
 	}
 
 	private synchronized void updateFileServerCache(String fileName, List<Machine> foundPeers) {
@@ -551,18 +555,14 @@ public class Node extends BasicServer {
 
 	public static void showUsage() {
 		System.out.println("\n\nUsage:");
-		System.out.println("Find: " + COMMAND_FIND
-				+ " <file name>");
-		System.out
-				.println("Download: "
-						+ COMMAND_DOWNLAOD
-						+ " <file name> [<machine list>]");
+		System.out.println("Find: " + COMMAND_FIND + " <file name>");
+		System.out.println("Download: " + COMMAND_DOWNLAOD + " <file name> [<machine list>]");
 		System.out.println("eg. ");
 		System.out.println(COMMAND_DOWNLAOD + " xyz.txt");
 		System.out.println(COMMAND_DOWNLAOD + " abc.txt node1:1000|node2:1000|node2:2000");
 		System.out.println("Stop: " + COMMAND_STOP);
 	}
-	
+
 	public static void main(String[] args) {
 		// TOOD in the production there would not be localServerIP but one from
 		// properties
@@ -601,24 +601,23 @@ public class Node extends BasicServer {
 				showUsage();
 				String command = reader.readLine();
 				if (command.startsWith(COMMAND_FIND)) {
-					if(command.length() > COMMAND_FIND.length()) {
-						String fileToFind = command
-								.substring(COMMAND_FIND.length()).trim();
-						if(!Utils.isEmpty(fileToFind)) {
+					if (command.length() > COMMAND_FIND.length()) {
+						String fileToFind = command.substring(COMMAND_FIND.length()).trim();
+						if (!Utils.isEmpty(fileToFind)) {
 							List<Machine> machinesWithFile = n.findFileOnTracker(fileToFind, null);
 							for (Machine m : machinesWithFile) {
 								StringBuilder builder = new StringBuilder();
-								builder.append(Machine.FORMAT_START).append(m.getIP()).append(SharedConstants.COMMAND_LIST_SEPARATOR).append(m.getPort())
+								builder.append(Machine.FORMAT_START).append(m.getIP())
+										.append(SharedConstants.COMMAND_LIST_SEPARATOR).append(m.getPort())
 										.append(Machine.FORMAT_END);
 								System.out.println(builder.toString());
 							}
 						}
 					}
-				} else if(command.startsWith(COMMAND_DOWNLAOD)) {
-					if(command.length() > COMMAND_DOWNLAOD.length()) {
-						String fileToFind = command
-								.substring(COMMAND_DOWNLAOD.length()).trim();
-						if(!Utils.isEmpty(fileToFind)) {
+				} else if (command.startsWith(COMMAND_DOWNLAOD)) {
+					if (command.length() > COMMAND_DOWNLAOD.length()) {
+						String fileToFind = command.substring(COMMAND_DOWNLAOD.length()).trim();
+						if (!Utils.isEmpty(fileToFind)) {
 							n.findAndDownloadFile(fileToFind);
 						}
 					}
@@ -636,7 +635,7 @@ public class Node extends BasicServer {
 		}
 
 	}
-	
+
 	public void findAndDownloadFile(String fileToFind) {
 		if (Utils.isNotEmpty(fileToFind)) {
 			if (fileNotExistsOnLocal(fileToFind)) {
@@ -725,10 +724,10 @@ public class Node extends BasicServer {
 								updateThreadMonitorObj.wait(NodeProps.HEARTBEAT_INTERVAL);
 							}
 						} catch (InterruptedException e) {
-							if(!shutdownInvoked){
+							if (!shutdownInvoked) {
 								logger.error("Interrupted Exception caught, stopping updater thread", e);
 							}
-							
+
 						}
 					}
 				} catch (Exception e) {
@@ -749,6 +748,22 @@ public class Node extends BasicServer {
 			this.shutdownInvoked = true;
 			this.interrupt();
 		}
+	}
+
+	public AtomicInteger getCurrentUploads() {
+		return currentUploads;
+	}
+
+	public AtomicInteger getCurrentDownloads() {
+		return currentDownloads;
+	}
+
+	public double getAvgTimeToServiceUploadRequest() {
+		return avgTimeToServiceUploadRequest;
+	}
+
+	public double getAvgTimeToGetSuccessfulDownload() {
+		return avgTimeToGetSuccessfulDownload;
 	}
 
 	/**
@@ -806,12 +821,12 @@ public class Node extends BasicServer {
 					try {
 						Thread.sleep(NodeProps.UNFINISHED_TASK_INTERVAL);
 					} catch (Exception e) {
-						if(!shutdownInvoked){
+						if (!shutdownInvoked) {
 							logger.error("Error in while loop sleep", e);
 						}
 						// if error while sleeping, this could be interrupt
 						// signal, get out
-						
+
 					}
 				}
 
@@ -860,19 +875,21 @@ public class Node extends BasicServer {
 		}
 
 		byte[] awqReturn = null;
-		try {
-			awqReturn = TCPClient.sendData(myTrackingServer, myInfo,
-					Utils.stringToByte(failedPeersMessage.toString(), NodeProps.ENCODING));
-			String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
-			// return expected as ""
-			String[] brokenOnCommandSeparator = Utils.splitCommandIntoFragments(awqStr);
-			if (brokenOnCommandSeparator[0].startsWith(SharedConstants.COMMAND_SUCCESS)) {
-				LoggingUtils.logInfo(logger, "Tracking Server updated with the failed peer info");
+		while (true) {
+			try {
+				awqReturn = TCPClient.sendData(myTrackingServer, myInfo,
+						Utils.stringToByte(failedPeersMessage.toString(), NodeProps.ENCODING));
+				String awqStr = Utils.byteToString(awqReturn, NodeProps.ENCODING);
+				// return expected as ""
+				String[] brokenOnCommandSeparator = Utils.splitCommandIntoFragments(awqStr);
+				if (brokenOnCommandSeparator[0].startsWith(SharedConstants.COMMAND_SUCCESS)) {
+					LoggingUtils.logInfo(logger, "Tracking Server updated with the failed peer info");
+				}
+			} catch (IOException e) {
+				LoggingUtils.logError(logger, e, "Error in communicating with tracker server");
+				this.trackingServerUnavlblBlock();
+				checkIfBlockedAndAct("sendFailedPeerMessageToTrackingServer");
 			}
-		} catch (IOException e) {
-			LoggingUtils.logError(logger, e, "Error in communicating with tracker server");
-			this.trackingServerUnavlblBlock();
-			throw e;
 		}
 
 	}

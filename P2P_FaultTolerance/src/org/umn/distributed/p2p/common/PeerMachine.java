@@ -2,6 +2,8 @@ package org.umn.distributed.p2p.common;
 
 import java.util.Comparator;
 
+import org.umn.distributed.p2p.node.NodeProps;
+
 /**
  * In addition to machine, this peer machine at every peer will contain the
  * latency information, which is the (current) load and time delay from the
@@ -61,8 +63,8 @@ public class PeerMachine extends Machine {
 	 * Default policy latencyWeight is 10 times less important than
 	 * currentLoadWeight
 	 */
-	double latencyWeight = 0.01;
-	double currentLoadWeight = 0.1;
+	double latencyWeight = NodeProps.peerSelectionLatencyWeight; // 0.01
+	double currentLoadWeight = NodeProps.peerSelectionLoadWeight; // 0.1
 
 	public static final Comparator<PeerMachine> PEER_SELECTION_POLICY = new Comparator<PeerMachine>() {
 		/**
