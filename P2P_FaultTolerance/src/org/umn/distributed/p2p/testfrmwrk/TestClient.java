@@ -160,11 +160,16 @@ public class TestClient {
 
 							try {
 								n.findAndDownloadFile(fileName);
-//							} catch (IOException e) {
-//								LoggingUtils.logError(logger, e, "Error downloading the file=%s", fileName);
-							} catch (Exception e){
-								LoggingUtils.logError(logger, e, "Error Trying to downloading the file=%s, fileIdx=%s,files=%s, machineId=%s; idNodeMap=%s", fileName,
-										fileIdx, files, machineId,idNodeMap);
+								// } catch (IOException e) {
+								// LoggingUtils.logError(logger, e,
+								// "Error downloading the file=%s", fileName);
+							} catch (Exception e) {
+								LoggingUtils
+										.logError(
+												logger,
+												e,
+												"Error Trying to downloading the file=%s, fileIdx=%s,files=%s, machineId=%s; idNodeMap=%s",
+												fileName, fileIdx, files, machineId, idNodeMap);
 							}
 						}
 
@@ -185,11 +190,13 @@ public class TestClient {
 								for (int j = 0; j < individualDownloadsToBegin; j++) {
 									int fileIdx = randomGenerator.nextInt(files.size());
 									String fileName = files.get(fileIdx);
-//									try {
-										entry.getValue().findAndDownloadFile(fileName);
-//									} catch (IOException e) {
-//										LoggingUtils.logError(logger, e, "Error downloading the file=%s", fileName);
-//									}
+									// try {
+									entry.getValue().findAndDownloadFile(fileName);
+									// } catch (IOException e) {
+									// LoggingUtils.logError(logger, e,
+									// "Error downloading the file=%s",
+									// fileName);
+									// }
 								}
 							}
 
@@ -209,7 +216,8 @@ public class TestClient {
 						Node n = idNodeMap.get(ij);
 						if (n != null) {
 							if (n.hasUnfinishedDownloads()) {
-								LoggingUtils.logDebug(logger, "###############Tasks are not over for thread group=%s", n.getId());
+								LoggingUtils.logDebug(logger, "###############Tasks are not over for thread group=%s",
+										n.getId());
 								unfinishedDownloadPresent = true;
 								break;
 							} else {

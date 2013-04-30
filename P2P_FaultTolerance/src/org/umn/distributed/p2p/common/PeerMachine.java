@@ -28,8 +28,7 @@ public class PeerMachine extends Machine {
 		this.latencyMillis = latencyMillis;
 	}
 
-	public PeerMachine(String iP, int port, long latencyMillis,
-			int currentLoad, double avgTimeToService) {
+	public PeerMachine(String iP, int port, long latencyMillis, int currentLoad, double avgTimeToService) {
 		super(iP, port);
 		this.currentLoad = currentLoad;
 		this.latencyMillis = latencyMillis;
@@ -54,12 +53,9 @@ public class PeerMachine extends Machine {
 
 	public String getString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("Node ").append(FORMAT_START).append(getIP())
-				.append(":").append(getPort());
-		builder.append(", latencyMillis=").append(latencyMillis)
-				.append(", currentLoad=").append(currentLoad);
-		builder.append(", avgTimeToServiceRequest=")
-				.append(avgTimeToServiceRequest).append(FORMAT_END);
+		builder.append("Node ").append(FORMAT_START).append(getIP()).append(":").append(getPort());
+		builder.append(", latencyMillis=").append(latencyMillis).append(", currentLoad=").append(currentLoad);
+		builder.append(", avgTimeToServiceRequest=").append(avgTimeToServiceRequest).append(FORMAT_END);
 		return builder.toString();
 	}
 
@@ -71,8 +67,8 @@ public class PeerMachine extends Machine {
 	public double currentLoadWeight = NodeProps.peerSelectionLoadWeight; // 0.1
 
 	public static double getPeerWeight(PeerMachine machine) {
-		return machine.getCurrentLoad() * machine.currentLoadWeight
-				+ machine.getLatencyMillis() * machine.latencyMillis;
+		return machine.getCurrentLoad() * machine.currentLoadWeight + machine.getLatencyMillis()
+				* machine.latencyMillis;
 	}
 
 	/**
@@ -84,9 +80,8 @@ public class PeerMachine extends Machine {
 	 * @return
 	 */
 	public static double getPeerWeight2(PeerMachine machine) {
-		return machine.getCurrentLoad() * machine.getAvgTimeToServiceRequest()
-				* machine.currentLoadWeight + machine.getLatencyMillis()
-				* machine.latencyMillis;
+		return machine.getCurrentLoad() * machine.getAvgTimeToServiceRequest() * machine.currentLoadWeight
+				+ machine.getLatencyMillis() * machine.latencyMillis;
 	}
 
 	public static final Comparator<PeerMachine> PEER_SELECTION_POLICY = new Comparator<PeerMachine>() {

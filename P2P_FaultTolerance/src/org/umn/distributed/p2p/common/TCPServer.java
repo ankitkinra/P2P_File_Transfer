@@ -129,11 +129,11 @@ public class TCPServer implements Runnable {
 						// close
 						// the stream
 						OutputStream socOs = socket.getOutputStream();
-						if(socOs != null){
+						if (socOs != null) {
 							socOs.write(buffer);
-						}else{
-							//socket closed, so the other peer has died,
-							//just break
+						} else {
+							// socket closed, so the other peer has died,
+							// just break
 						}
 					}
 				}

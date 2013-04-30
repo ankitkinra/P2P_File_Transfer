@@ -22,7 +22,7 @@ public abstract class BasicServer extends Thread implements TcpServerDelegate {
 		this(port, numTreads, null);
 	}
 
-	public void run(){
+	public void run() {
 		logger.info("****************Starting Tracking Server****************");
 		try {
 			this.port = this.tcpServer.startListening(this.port);
