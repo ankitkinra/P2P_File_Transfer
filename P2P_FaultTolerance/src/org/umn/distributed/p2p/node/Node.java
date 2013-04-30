@@ -37,7 +37,6 @@ import org.umn.distributed.p2p.node.Constants.DOWNLOAD_ACTIVITY;
 import org.umn.distributed.p2p.node.Constants.PEER_DOWNLOAD_ACTIVITY;
 
 public class Node extends BasicServer {
-	
 	protected Logger logger = Logger.getLogger(this.getClass());
 	private static final String COMMAND_STOP = "stop";
 	private static final String COMMAND_FIND = "find";
@@ -617,36 +616,9 @@ public class Node extends BasicServer {
 
 	@Override
 	protected void shutdownSpecific() {
-		LoggingUtils.logInfo(logger, "Summary = %s", showSummary()) ;
 		this.updateServerThread.invokeShutdown();
 		this.downloadService.stop();
 		this.unfinishedTaskMonitor.invokeShutdown();
-	}
-
-	public String showSummary() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("Node [currentUploads=");
-		builder.append(currentUploads);
-		builder.append(", currentDownloads=");
-		builder.append(currentDownloads);
-		builder.append(", unfinishedDownloadStatus=");
-		builder.append(unfinishedDownloadStatus);
-		builder.append(", trackingServerUnavlblBlocked=");
-		builder.append(trackingServerUnavlblBlocked);
-		builder.append(", myFilesAndChecksums=");
-		builder.append(myFilesAndChecksums);
-		builder.append(", avgTimeToServiceUploadRequest=");
-		builder.append(avgTimeToServiceUploadRequest);
-		builder.append(", avgTimeToGetSuccessfulDownload=");
-		builder.append(avgTimeToGetSuccessfulDownload);
-		builder.append(", totalUploadRequestHandled=");
-		builder.append(totalUploadRequestHandled);
-		builder.append(", totalDownloadRequested=");
-		builder.append(totalDownloadRequested);
-		builder.append(", filesServersCache=");
-		builder.append(filesServersCache);
-		builder.append("]");
-		return builder.toString();
 	}
 
 	protected void trackingServerUnavlblBlock() {
@@ -1065,7 +1037,6 @@ public class Node extends BasicServer {
 							.logInfo(logger,
 									"Tracking Server updated with the failed peer info");
 				}
-				break;
 			} catch (IOException e) {
 				LoggingUtils.logError(logger, e,
 						"Error in communicating with tracker server");
