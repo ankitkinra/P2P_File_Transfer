@@ -507,7 +507,7 @@ public class Node extends BasicServer {
 	 * @throws IOException this means that the Tracking Sever is down. Need to act by blocking
 	 */
 	public void downloadFileFromPeer(String fileName, List<PeerMachine> avlblPeers) {
-		
+
 		if (avlblPeers != null) {
 			removeIfMyMachineExistsInPeers(avlblPeers);
 			if (avlblPeers.size() > 0) {
@@ -614,8 +614,7 @@ public class Node extends BasicServer {
 		// functioning
 		// Optional still allow peers to talk to each other.
 		this.trackingServerUnavlblBlocked = true;
-		LoggingUtils.logInfo(logger,
-				"Blocked the peer as Tracking server is unavailable; trackingServerUnavlblBlocked=%s",
+		LoggingUtils.logInfo(logger, "Tracking server is not available, setting trackingServerUnavlblBlocked=%s",
 				trackingServerUnavlblBlocked);
 	}
 
@@ -839,22 +838,22 @@ public class Node extends BasicServer {
 						filesToRemove.addAll(filesFromLastUpdate);
 						filesToRemove.removeAll(currentFiles);
 					}
-					filesFromLastUpdate = currentFiles; // for the next round
 					sendCompleteStatusOnNextAttempt = false;
-					if (currentFiles.size() > 0 || trackingServerUnavlblBlocked) {
-						calculateAndAddChecksums(currentFiles);
-						removeFilesFromCache(filesToRemove);
-						updateFileList(FILES_UPDATE_MESSAGE_TYPE.COMPLETE, currentFiles, filesToRemove);
-						if (Node.this.trackingServerUnavlblBlocked) {
-							Node.this.trackingServerUnavlblBlocked = false;
-							sendCompleteStatusOnNextAttempt = true;
-							LoggingUtils.logInfo(logger,
-									"Restarted communication with tracking server and hence turned trackingServerUnavlblBlocked=%s."
-											+ "Also will send the server the entire information again",
-									trackingServerUnavlblBlocked);
-						}
-						lastUpdateTime = System.currentTimeMillis();
+
+					calculateAndAddChecksums(currentFiles);
+					removeFilesFromCache(filesToRemove);
+					updateFileList(FILES_UPDATE_MESSAGE_TYPE.COMPLETE, currentFiles, filesToRemove);
+					filesFromLastUpdate = currentFiles; // for the next round
+					if (Node.this.trackingServerUnavlblBlocked) {
+						Node.this.trackingServerUnavlblBlocked = false;
+						sendCompleteStatusOnNextAttempt = true;
+						LoggingUtils.logInfo(logger,
+								"Restarted communication with tracking server and hence turned trackingServerUnavlblBlocked=%s."
+										+ "Also will send the server the entire information again",
+								trackingServerUnavlblBlocked);
 					}
+					lastUpdateTime = System.currentTimeMillis();
+
 					/**
 					 * sendCompleteStatusOnNextAttempt == true, this means that
 					 * we want to update the server as soon as possible with all

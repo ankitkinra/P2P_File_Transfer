@@ -13,7 +13,7 @@ public class NodeProps {
 	public static boolean enableFileLocationCacheLookup;
 	public static double peerSelectionLatencyWeight;
 	public static double peerSelectionLoadWeight;
-	public static final long HEARTBEAT_INTERVAL = 10 * 60 * 1000;
+	public static final long HEARTBEAT_INTERVAL = 1 * 60 * 1000;
 	public static final long FAILED_TASK_RETRY_INTERVAL = 10 * 1000;
 	public static final int MAX_TASK_TO_RETRY_EVERY_INTERVAL = 5;
 	public static final Integer MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE = 3;

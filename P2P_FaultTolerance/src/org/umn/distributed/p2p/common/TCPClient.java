@@ -40,6 +40,7 @@ public class TCPClient {
 		byte[] buffer = new byte[buffSize];
 		byte[] outputBuffer = null;
 		try {
+			LoggingUtils.logDebug(logger, "Trying to connect to remote machine = %s", remoteMachine);
 			clientSocket = new Socket(remoteMachine.getIP(), remoteMachine.getPort());
 			clientSocket.getOutputStream().write(data);
 			clientSocket.getOutputStream().flush();
