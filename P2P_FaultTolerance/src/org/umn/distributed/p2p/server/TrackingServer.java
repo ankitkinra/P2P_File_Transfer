@@ -192,22 +192,61 @@ public class TrackingServer extends BasicServer {
 
 	private void handleFileUpdateMessage(String request) {
 		/**
-		 * (FILE_LIST=[f1;f2;f3]|MACHINE=[M1]) Need to add all the files from
-		 * this server to the fileMap
+		 * FILE_LIST=[f1;f2;f3]|DELETED_LIST=[f4;f5]|MACHINE=[M1] Need to add
+		 * all the files from this server to the fileMap
 		 */
 		String[] commandFragments = Utils.splitCommandIntoFragments(request);
 		LoggingUtils.logInfo(logger, "request=%s;;commandFragments=%s;",
 				request, Arrays.toString(commandFragments));
-		// TODO validation here
 		String[] filesFromCommandFrag = Utils
 				.getKeyAndValuefromFragment(commandFragments[0]);
-		String[] machineFromCommandFrag = Utils
+		String[] deleteFilesFromCommandFrag = Utils
 				.getKeyAndValuefromFragment(commandFragments[1]);
+		String[] machineFromCommandFrag = Utils
+				.getKeyAndValuefromFragment(commandFragments[2]);
 		addNodeFilesToMap(filesFromCommandFrag[1],
+				Machine.parse(machineFromCommandFrag[1]));
+		removeNodeFilesFromMap(deleteFilesFromCommandFrag[1],
 				Machine.parse(machineFromCommandFrag[1]));
 		// need to change this to make it consistent with sequential
 		// server
 	}
+
+	private void removeNodeFilesFromMap(String deletedFiles, Machine sendNode) {
+		/**
+		 * deletedFiles = [file1;file2;file3]
+		 * 
+		 */
+		String realFileList = deletedFiles.substring(1,
+				deletedFiles.length() - 1);
+		LoggingUtils.logInfo(logger,
+				"deletedFiles List after prefix removal=>>%s<<", realFileList);
+		String[] deletedFilesArr = Utils.getStringSplitToArr(realFileList,
+				SharedConstants.COMMAND_LIST_SEPARATOR);
+		for (String file : deletedFilesArr) {
+			removeFile(file, sendNode);
+		}
+		displayFileServerMap();
+	}
+
+	private void removeFile(String fileName, Machine sendNode) {
+		writeL.lock();
+		try {
+			HashSet<Machine> machinesForArticle = null;
+			if (this.filesServersMap.containsKey(fileName)) {
+				machinesForArticle = this.filesServersMap.get(fileName);
+				machinesForArticle.remove(sendNode);
+				LoggingUtils
+						.logInfo(
+								logger,
+								"removed peer = %s with file =%s from the fileServersMap",
+								fileName, sendNode);
+			}
+		} finally {
+			writeL.unlock();
+		}
+	}
+
 
 	/**
 	 * accomodating failedPeerList is an optional operation

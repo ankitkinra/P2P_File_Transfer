@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
@@ -426,7 +427,7 @@ public class Node extends BasicServer {
 
 	}
 
-	private void calculateAndAddChecksums(List<String> fileNamesToSend)
+	private void calculateAndAddChecksums(Set<String> fileNamesToSend)
 			throws Exception {
 		for (String fileName : fileNamesToSend) {
 			// as the file has come here maybe it has updated modified
@@ -500,16 +501,17 @@ public class Node extends BasicServer {
 	}
 
 	/**
-	 * (FILE_LIST=<[f1;]>|MACHINE=[M1])a Node comes with complete list of files.
-	 * this should also be called from the update the server periodically
+	 * (FILE_LIST=<[f1;]>|DELETED_LIST=<[f2;]>|MACHINE=[M1])a Node comes with
+	 * complete list of files. this should also be called from the update the
+	 * server periodically
 	 * 
-	 * @param fileName
-	 * @param failedPeers
 	 * @return
 	 * @throws IOException
 	 */
 	public boolean updateFileList(FILES_UPDATE_MESSAGE_TYPE updateType,
-			List<String> filesToSend) throws IOException {
+			Set<String> filesToSend, Set<String> filesToRemove)
+			throws IOException {
+
 		StringBuilder updateFileListMessage = new StringBuilder();
 		switch (updateType) {
 		case COMPLETE:
@@ -524,7 +526,7 @@ public class Node extends BasicServer {
 			break;
 		}
 		/**
-		 * FILE_LIST=[f1;f2;f3]|MACHINE=[M1]
+		 * FILE_LIST=[f1;f2;f3]|DELETED_LIST=[f4;f5]|MACHINE=[M1]
 		 */
 		StringBuilder fileListBuilder = new StringBuilder(
 				SharedConstants.COMMAND_LIST_STARTER);
@@ -535,6 +537,22 @@ public class Node extends BasicServer {
 		fileListBuilder.append(SharedConstants.COMMAND_LIST_END);
 		updateFileListMessage.append(SharedConstants.COMMAND_VALUE_SEPARATOR)
 				.append(fileListBuilder.toString());
+
+		StringBuilder removeFileListBuilder = new StringBuilder(
+				SharedConstants.COMMAND_LIST_STARTER);
+		for (String file : filesToRemove) {
+			removeFileListBuilder.append(file).append(
+					SharedConstants.COMMAND_LIST_SEPARATOR);
+		}
+		removeFileListBuilder.append(SharedConstants.COMMAND_LIST_END);
+
+		updateFileListMessage
+				.append(SharedConstants.COMMAND_PARAM_SEPARATOR)
+				.append(SharedConstants.NODE_REQUEST_TO_SERVER.DELETE_LIST
+						.name())
+				.append(SharedConstants.COMMAND_VALUE_SEPARATOR)
+				.append(removeFileListBuilder.toString());
+
 		updateFileListMessage.append(SharedConstants.COMMAND_PARAM_SEPARATOR)
 				.append("MACHINE")
 				.append(SharedConstants.COMMAND_VALUE_SEPARATOR);
@@ -597,9 +615,13 @@ public class Node extends BasicServer {
 
 	}
 
-	public List<String> getFilesFromTheWatchedDirectory(long lastUpdateTime,
+	public Set<String> getFilesFromTheWatchedDirectory(boolean sendCompleteList) {
+		return getFilesFromTheWatchedDirectory(0, sendCompleteList);
+	}
+
+	public Set<String> getFilesFromTheWatchedDirectory(long lastUpdateTime,
 			boolean sendCompleteList) {
-		List<String> listOfFiles = new ArrayList<String>();
+		Set<String> listOfFiles = new HashSet<String>();
 		File dir = new File(directoryToWatchAndSave);
 		File[] fileListing = dir.listFiles();
 		for (File f : fileListing) {
@@ -901,20 +923,25 @@ public class Node extends BasicServer {
 		private long lastUpdateTime = 0;
 		private boolean sendCompleteStatusOnNextAttempt = false;
 		private boolean shutdownInvoked = false;
+		private Set<String> filesFromLastUpdate = null;
 
 		@Override
 		public void run() {
 
 			do {
 				try {
-					List<String> fileNamesToSend = getFilesFromTheWatchedDirectory(
-							lastUpdateTime, sendCompleteStatusOnNextAttempt);
+					Set<String> currentFiles = getFilesFromTheWatchedDirectory(true);
+					Set<String> filesToRemove = null;
+					if (filesFromLastUpdate != null) {
+						filesToRemove = new HashSet<String>(filesFromLastUpdate);
+						filesToRemove.removeAll(currentFiles);
+					}
 					sendCompleteStatusOnNextAttempt = false;
-					if (fileNamesToSend.size() > 0
-							|| trackingServerUnavlblBlocked) {
-						calculateAndAddChecksums(fileNamesToSend);
+					if (currentFiles.size() > 0 || trackingServerUnavlblBlocked) {
+						calculateAndAddChecksums(currentFiles);
+						removeFilesFromCache(filesToRemove);
 						updateFileList(FILES_UPDATE_MESSAGE_TYPE.COMPLETE,
-								fileNamesToSend);
+								currentFiles, filesToRemove);
 						if (Node.this.trackingServerUnavlblBlocked) {
 							Node.this.trackingServerUnavlblBlocked = false;
 							sendCompleteStatusOnNextAttempt = true;
@@ -925,8 +952,8 @@ public class Node extends BasicServer {
 													+ "Also will send the server the entire information again",
 											trackingServerUnavlblBlocked);
 						}
+						lastUpdateTime = System.currentTimeMillis();
 					}
-					lastUpdateTime = System.currentTimeMillis();
 					/**
 					 * sendCompleteStatusOnNextAttempt == true, this means that
 					 * we want to update the server as soon as possible with all
@@ -963,6 +990,17 @@ public class Node extends BasicServer {
 				}
 			} while (!shutdownInvoked);
 
+		}
+
+		private void removeFilesFromCache(Set<String> filesToRemoveFromCache) {
+			if (filesToRemoveFromCache != null) {
+				for (String fileName : filesToRemoveFromCache) {
+					// as the file has come here maybe it has updated modified
+					LoggingUtils.logDebug(logger,
+							"Removing file =%s from the cache", fileName);
+					myFilesAndChecksums.remove(fileName);
+				}
+			}
 		}
 
 		private void invokeShutdown() {

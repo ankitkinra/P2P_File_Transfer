@@ -20,7 +20,7 @@ public class SharedConstants {
 	public static final byte[] FILE_NOT_FOUND = Utils.stringToByte("FILE_NOT_FOUND");
 
 	public static enum NODE_REQUEST_TO_SERVER {
-		FILE_LIST, ADDED_FILE_LIST, FIND, FAILED_PEERS;
+		FILE_LIST,DELETE_LIST, ADDED_FILE_LIST, FIND, FAILED_PEERS;
 	};
 
 	public static enum NODE_REQUEST_TO_NODE {

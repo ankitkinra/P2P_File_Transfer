@@ -49,7 +49,7 @@ public class TestClient {
 	private Random randomGenerator = new Random();
 	private int nodeStartPort = 0;
 	private HashMap<Integer, Node> idNodeMap = new HashMap<Integer, Node>();
-	private HashMap<Integer, List<String>> nodeidFilesMap = new HashMap<Integer, List<String>>();
+	private HashMap<Integer, Set<String>> nodeidFilesMap = new HashMap<Integer, Set<String>>();
 
 	public TestClient(String xmlFilePath, String trackingIp, int trackingPort, int nodeStartPort) {
 		this.xmlTestCasePath = xmlFilePath;
@@ -247,7 +247,7 @@ public class TestClient {
 	 */
 	private List<String> getAllFilesOtherThan(int machineId) {
 		Set<String> uniqueFileNames = new HashSet<String>();
-		for (Entry<Integer, List<String>> entry : nodeidFilesMap.entrySet()) {
+		for (Entry<Integer, Set<String>> entry : nodeidFilesMap.entrySet()) {
 			if (machineId != entry.getKey()) {
 				for (String fileName : entry.getValue()) {
 					uniqueFileNames.add(fileName);
