@@ -13,7 +13,7 @@ public class SharedConstants {
 	public static final String DEFAULT_ENCODING = "UTF8";
 	public static final String COMMAND_LIST_STARTER = "[";
 	public static final String COMMAND_LIST_END = "]";
-	public static final int DEFAULT_BUFFER_LENGTH = 1024;
+	public static final int DEFAULT_BUFFER_LENGTH = 4096;
 	public static final long FILE_FAILED_TIME = -1;
 	public static final String MESSAGE_DIGEST_NAME = "MD5";
 	public static final String MESSAGE_DIGEST_NAME_TEST = "SHA1";

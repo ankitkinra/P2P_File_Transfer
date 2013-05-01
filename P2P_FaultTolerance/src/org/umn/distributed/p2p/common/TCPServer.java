@@ -97,7 +97,7 @@ public class TCPServer implements Runnable {
 		@Override
 		public void run() {
 			InputStream is = null;
-			int buffSize = 1024;
+			int buffSize = SharedConstants.DEFAULT_BUFFER_LENGTH;
 			byte buffer[] = new byte[buffSize];
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
 			int count = 0;
