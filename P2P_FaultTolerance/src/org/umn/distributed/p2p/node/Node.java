@@ -41,7 +41,7 @@ public class Node extends BasicServer {
 	protected Logger logger = Logger.getLogger(this.getClass());
 	private static final String COMMAND_STOP = "stop";
 	private static final String COMMAND_FIND = "find";
-	private static final String COMMAND_DOWNLAOD = "download";
+	private static final String COMMAND_DOWNLOAD = "download";
 	private static final String COMMAND_DOWNLAOD_SPECIFIC = "sdownload";
 
 	protected int port;
@@ -341,6 +341,7 @@ public class Node extends BasicServer {
 				if (brokenOnCommandSeparator[0].startsWith(SharedConstants.COMMAND_SUCCESS)) {
 					LoggingUtils.logInfo(logger, "peers =%s found for file=%s", brokenOnCommandSeparator[1], fileName);
 					foundPeers = Machine.parseList(brokenOnCommandSeparator[1]);
+					removeIfMyMachineExistsInPeers(foundPeers);
 				} else {
 					// empty
 					foundPeers = new LinkedList<Machine>();
@@ -522,10 +523,10 @@ public class Node extends BasicServer {
 
 	}
 
-	private void removeIfMyMachineExistsInPeers(List<PeerMachine> avlblPeers) {
-		Iterator<PeerMachine> itr = avlblPeers.iterator();
+	private void removeIfMyMachineExistsInPeers(List<? extends Machine> avlblPeers) {
+		Iterator<? extends Machine> itr = avlblPeers.iterator();
 		while (itr.hasNext()) {
-			PeerMachine iterM = itr.next();
+			Machine iterM = itr.next();
 			if (iterM.getIP().equals(myInfo.getIP()) && iterM.getPort() == myInfo.getPort()) {
 				itr.remove();
 			}
@@ -634,10 +635,10 @@ public class Node extends BasicServer {
 	public static void showUsage() {
 		System.out.println("\n\nUsage:");
 		System.out.println("Find: " + COMMAND_FIND + " <file name>");
-		System.out.println("Download: " + COMMAND_DOWNLAOD + " <file name> [<machine list>]");
+		System.out.println("Download: " + COMMAND_DOWNLOAD + " <file name> [<machine list>]");
 		System.out.println("eg. ");
-		System.out.println(COMMAND_DOWNLAOD + " xyz.txt");
-		System.out.println(COMMAND_DOWNLAOD + " abc.txt node1:1000|node2:1000|node2:2000");
+		System.out.println(COMMAND_DOWNLOAD + " xyz.txt");
+		System.out.println(COMMAND_DOWNLOAD + " abc.txt node1:1000|node2:1000|node2:2000");
 		System.out.println("Stop: " + COMMAND_STOP);
 	}
 
@@ -699,9 +700,9 @@ public class Node extends BasicServer {
 							}
 						}
 					}
-				} else if (command.startsWith(COMMAND_DOWNLAOD)) {
-					if (command.length() > COMMAND_DOWNLAOD.length()) {
-						String fileToFind = command.substring(COMMAND_DOWNLAOD.length()).trim();
+				} else if (command.startsWith(COMMAND_DOWNLOAD)) {
+					if (command.length() > COMMAND_DOWNLOAD.length()) {
+						String fileToFind = command.substring(COMMAND_DOWNLOAD.length()).trim();
 						if (!Utils.isEmpty(fileToFind)) {
 							n.findAndDownloadFile(fileToFind);
 						}
