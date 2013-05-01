@@ -130,6 +130,7 @@ public class Node extends BasicServer {
 		this.myTrackingServer = trackingServer;
 		this.directoryToWatchAndSave = appendPortToDir(dirToWatch, this.myInfo.getPort());
 		if (directoryToWatchAndSave == null) {
+			super.shutdown();
 			throw new IllegalArgumentException(
 					"Either the directory did not exits or system could not create one. Please check the path and permissions");
 		}
