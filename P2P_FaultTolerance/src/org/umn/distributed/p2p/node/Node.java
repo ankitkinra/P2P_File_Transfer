@@ -630,22 +630,18 @@ public class Node extends BasicServer {
 	}
 
 	public static void showStartUsage() {
-		System.out.println("Usage:");
+		System.out.println("\n\nUsage:");
 		System.out
-				.println("Start replica: ./startnode.sh <trackingServerIp> <trackingServerPort> <myPort> <directoryForFiles> <machineId>");
+				.println("Start replica: ./startnode.sh <trackingServerIp> <trackingServerPort> <myPort> <directoryForFiles> <machineId> <node config file path>");
 	}
 
 	public static void showUsage() {
 		System.out.println("\n\nUsage:");
 		System.out.println("Find: " + COMMAND_FIND + " <file name>");
-		System.out.println("Download: " + COMMAND_DOWNLOAD + " <file name> [<machine list>]");
-		System.out.println("eg. ");
-		System.out.println(COMMAND_DOWNLOAD + " xyz.txt");
-		System.out.println(COMMAND_DOWNLOAD + " abc.txt node1:1000|node2:1000|node2:2000");
-		System.out.println(COMMAND_DOWNLOAD + " abc.txt node1:1000|node2:1000|node2:2000");
-		System.out.println(COMMAND_DOWNLOAD_SPECIFIC + " abc.txt [download a file from a specific node]");
-		System.out.println(COMMAND_SHOW_SUMMARY);
-		System.out.println(COMMAND_DELETE_FILE_FROM_LOCAL + " abc.txt");
+		System.out.println("Download: " + COMMAND_DOWNLOAD + " <file name>");
+		System.out.println("Download specific: "  + COMMAND_DOWNLOAD_SPECIFIC + " <file name>");
+		System.out.println("Show summary: " + COMMAND_SHOW_SUMMARY);
+		System.out.println("Delete file: " + COMMAND_DELETE_FILE_FROM_LOCAL + " <file name>");
 		System.out.println("Stop: " + COMMAND_STOP);
 	}
 

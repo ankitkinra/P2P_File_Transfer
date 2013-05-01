@@ -297,8 +297,8 @@ public class TrackingServer extends BasicServer {
 	}
 
 	private static void showStartUsage() {
-		System.out.println("Usage:");
-		System.out.println("\t Start TrackingServer: ./startTrackingServer.sh <config file path> <server-start-port>");
+		System.out.println("\n\nUsage:");
+		System.out.println("Start TrackingServer: ./startTrackingServer.sh <config file path> <server-start-port>");
 	}
 
 	/**
