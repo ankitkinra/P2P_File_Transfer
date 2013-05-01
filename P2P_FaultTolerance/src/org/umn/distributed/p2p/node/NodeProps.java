@@ -13,14 +13,15 @@ public class NodeProps {
 	public static boolean enableFileLocationCacheLookup;
 	public static double peerSelectionLatencyWeight;
 	public static double peerSelectionLoadWeight;
-	public static final long HEARTBEAT_INTERVAL = 1 * 60 * 1000;
-	public static final long FAILED_TASK_RETRY_INTERVAL = 10 * 1000;
-	public static final int MAX_TASK_TO_RETRY_EVERY_INTERVAL = 5;
-	public static final Integer MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE = 3;
-	public static final int FILE_BUFFER_LENGTH = 1024;
-	public static final String DEFAULT_LATENCY_FILE = "latency.properties";
-	public static final long UNFINISHED_TASK_INTERVAL = 5 * 1000;
-	public static final long UNAVAILABLE_PEER_SERVER_BLOCKED_TIME = 10 * 1000;
+	public static int tcpServerThreads = 10;
+	public static long HEARTBEAT_INTERVAL = 1 * 60 * 1000;
+	public static long FAILED_TASK_RETRY_INTERVAL = 10 * 1000;
+	public static int MAX_TASK_TO_RETRY_EVERY_INTERVAL = 5;
+	public static Integer MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE = 3;
+	public static int FILE_BUFFER_LENGTH = 1024;
+	public static String DEFAULT_LATENCY_FILE = "latency.properties";
+	public static long UNFINISHED_TASK_INTERVAL = 5 * 1000;
+	public static long UNAVAILABLE_PEER_SERVER_BLOCKED_TIME = 10 * 1000;
 	public static final String PEER_SELECTION_LATENCY_WEIGHT = "0.01";
 	public static final String PEER_SELECTION_LOAD_WEIGHT = "0.1";
 
@@ -34,6 +35,15 @@ public class NodeProps {
 					PEER_SELECTION_LATENCY_WEIGHT));
 			peerSelectionLoadWeight = Double.parseDouble(prop.getProperty("peerSelectionLoadWeight",
 					PEER_SELECTION_LOAD_WEIGHT));
+			tcpServerThreads = Integer.parseInt(prop.getProperty("tcpServerThreads", "10"));
+			HEARTBEAT_INTERVAL = Long.parseLong(prop.getProperty("heartBeatInterval", "60000"));
+			MAX_TASK_TO_RETRY_EVERY_INTERVAL = Integer.parseInt(prop.getProperty("maxTaskToRetry", "10"));
+			MAX_ATTEMPTS_TO_DOWNLOAD_COURRUPT_FILE = Integer.parseInt(prop.getProperty(
+					"maxAttemptsToDownloadCorruptFile", "3"));
+			FILE_BUFFER_LENGTH = Integer.parseInt(prop.getProperty("fileBufferLength", "1024"));
+			UNFINISHED_TASK_INTERVAL = Long.parseLong(prop.getProperty("unfinishedTaskInterval", "5000"));
+			UNAVAILABLE_PEER_SERVER_BLOCKED_TIME = Long.parseLong(prop.getProperty("unavailablePeerServerBlockedTime",
+					"10000"));
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}

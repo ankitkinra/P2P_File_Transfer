@@ -19,6 +19,7 @@ import org.umn.distributed.p2p.common.Machine;
 import org.umn.distributed.p2p.common.Utils;
 import org.umn.distributed.p2p.node.Node;
 import org.umn.distributed.p2p.node.NodeProps;
+import org.umn.distributed.p2p.server.ServerProps;
 
 import com.thoughtworks.xstream.XStream;
 
@@ -61,14 +62,20 @@ public class TestClient {
 	public static void showUsage() {
 		System.out.println("Usage:");
 		System.out.println("Run tests: ./runtests.sh <Test Config File> <Tracking Ip> <Tracking Port> "
-				+ "<Node Start Port> <config file path>");
+				+ "<Node Start Port> <node config file path> <server config file>");
 	}
 
 	public static void main(String[] args) {
-		if (args.length == 4) {
+		if (args.length == 6) {
 			String xmlTestFile = args[0];
 			String trackingServerIP = args[1];
 			try {
+				String nodePropertyFileName = args[4];
+				NodeProps.loadProperties(nodePropertyFileName);
+				
+				String serverPropertyFileName = args[5];
+				ServerProps.loadProperties(serverPropertyFileName);
+				
 				int trackingServerPort = Integer.parseInt(args[2]);
 				if (!Utils.isValidPort(trackingServerPort)) {
 					System.out.println("Invalid port for trackingServerPort=" + trackingServerPort);
